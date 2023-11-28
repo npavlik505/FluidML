@@ -33,16 +33,16 @@ class LorenzEnv(gym.Env):
         self.observation_space = spaces.Box(low = np.array([-20, -15, 0]), high = np.array([20, 15, 45]), shape = (3,), dtype = np.float32) #No downstream numpy
         #NUMPY can't convert yet
         #Action Space
-        self.action_space = spaces.Box(low = -100, high = 100, shape = (1,), dtype = np.float32) #No downstream numpy
+        self.action_space = spaces.Box(low = -50, high = 50, shape = (1,), dtype = np.float32) #No downstream numpy
         #NUMPY can't convert yet
 
     #Lorenz System Eqns - dF = np.array([dX, dY, dZ])
     def lorenz(self, s, a):
         #print('before lorenz step', s,a)
         s = s.to(torch.float32)
-        dF = [s[0] + (self.sigma*(s[1] - s[0]))+ a,
-            s[1] + (s[0]*(self.rho - s[2]) - s[1]),
-            s[2] + (s[0]*s[1] - self.beta*s[2])]
+        dF = [(self.sigma*(s[1] - s[0]))+ a,
+            (s[0]*(self.rho - s[2]) - s[1]),
+            (s[0]*s[1] - self.beta*s[2])]
         #list comprehension to multiply a float by a list
         dF = [x*self.dt for x in dF]
         dF = torch.tensor(dF)
@@ -51,9 +51,9 @@ class LorenzEnv(gym.Env):
 
     def onlylorenz(self, s):
         s = s.to(torch.float32)
-        dFL = [s[0] + (self.sigma*(s[1] - s[0])),
-            s[1] + (s[0]*(self.rho - s[2]) - s[1]),
-            s[2] + (s[0]*s[1] - self.beta*s[2])]
+        dFL = [(self.sigma*(s[1] - s[0])),
+            (s[0]*(self.rho - s[2]) - s[1]),
+            (s[0]*s[1] - self.beta*s[2])]
         #list comprehension to multiply a float by a list
         dFL = [x*self.dt for x in dFL]
         dFL = torch.tensor(dFL)
