@@ -12,14 +12,14 @@ import torch.nn.functional as F
 
 class LorenzDataGenerator:
 
-    def __init__(self, sigma, rho, beta, time, dt, steps, datasets):
+    def __init__(self, sigma, rho, beta, time, dt, datasets):
         #Parameters
         self.sigma = sigma
         self.rho = rho
         self.beta = beta
-        self.dt = time
+        self.time = time
         self.dt = dt
-        self.steps = steps
+        self.steps = self.time/self.dt
         self.datasets = datasets
 
     def LorenzData(self, s):
@@ -32,47 +32,41 @@ class LorenzDataGenerator:
         dFL = torch.tensor(dFL)
         return dFL
 
-#Random Initial Conditions
+    #Random Initial Conditions
     def reset(self):
         self.F0 = np.array([np.random.uniform(-21, 21), np.random.uniform(-16, 16), np.random.uniform(-1, 46)])
         self.F0 = torch.tensor(self.F0)
         return self.F0
 
-#Take one step forward in the Lorenz System
+    #Take one step forward in the Lorenz System
     def step(self, s):
         s = torch.tensor(s)
         s += torch.tensor(self.LorenzData(s))
         return s
 
-sigma = 10
-rho = 28
-beta = 8/3
-dt = .001
-time = 20
-steps = time/dt
-print(type(steps))
-datasets = 5
-XYZ = LorenzDataGenerator(sigma, rho, beta, time, dt, steps, datasets)
-for x in range(0,XYZ.datasets):
-    file = h5py.File('LorenzDataSet20s_' + str(x) + '.h5py', 'w')
-    s = XYZ.reset()
-    DataSet = []
-    DataSetX = []
-    DataSetY = []
-    DataSetZ = []
-    for i in range(int(steps)):
-        DataSet.append(s)
-        DataSetX.append(s[0])
-        DataSetY.append(s[1])
-        DataSetZ.append(s[2])
-        s = XYZ.step(s)
-        if i == (steps-1): 
-            file.create_dataset("XYZ_Data", data = DataSet)
-            file.create_dataset("X_Data", data = DataSetX)
-            file.create_dataset("Y_Data", data = DataSetY)
-            file.create_dataset("Z_Data", data = DataSetZ)
-            print('DataSet_' + str(x) + 'complete')
-            file.close()
+
+    #Generate the data sets
+    def GenerateData(self):
+        for x in range(0,self.datasets):
+            file = h5py.File('LorenzDataSet_' + str(self.time) + 's_Set' + str(x+1) + '.h5py', 'w')
+            s = self.reset()
+            DataSet = []
+            DataSetX = []
+            DataSetY = []
+            DataSetZ = []
+            for i in range(int(self.steps)):
+                DataSet.append(s)
+                DataSetX.append(s[0])
+                DataSetY.append(s[1])
+                DataSetZ.append(s[2])
+                s = self.step(s)
+                if i == (self.steps-1): 
+                    file.create_dataset("XYZ_Data", data = DataSet)
+                    file.create_dataset("X_Data", data = DataSetX)
+                    file.create_dataset("Y_Data", data = DataSetY)
+                    file.create_dataset("Z_Data", data = DataSetZ)
+                    print('LorenzDataSet_' + str(self.time) + 's_Set' + str(x+1) + '_complete')
+                    file.close()
 
 
 #%%
