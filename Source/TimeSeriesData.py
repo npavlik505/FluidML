@@ -25,8 +25,8 @@ class LorenzDataGenerator:
     def LorenzData(self, s):
         s = s.to(torch.float32)
         dFL = [(self.sigma*(s[1] - s[0])),
-            + (s[0]*(self.rho - s[2]) - s[1]),
-            + (s[0]*s[1] - self.beta*s[2])]
+            (s[0]*(self.rho - s[2]) - s[1]),
+            (s[0]*s[1] - self.beta*s[2])]
         #list comprehension to multiply a float by a list
         dFL = [x*self.dt for x in dFL]
         dFL = torch.tensor(dFL)
@@ -47,34 +47,42 @@ class LorenzDataGenerator:
 
     #Generate the data sets
     def GenerateData(self):
-        for x in range(0,self.datasets):
-            file = h5py.File('LorenzDataSet_' + str(self.time) + 's_Set' + str(x+1) + '.h5py', 'w')
+        for i in range(self.datasets):
+            file = h5py.File('LorenzDataSet_20s_Set' + str(i+1) + '.h5py', 'w')
             s = self.reset()
             DataSet = []
             DataSetX = []
             DataSetY = []
             DataSetZ = []
-            for i in range(int(self.steps)):
+            for x in range(int(self.steps)):
                 DataSet.append(s)
                 DataSetX.append(s[0])
                 DataSetY.append(s[1])
                 DataSetZ.append(s[2])
                 s = self.step(s)
-                if i == (self.steps-1): 
+                if x == (self.steps-1):
                     file.create_dataset("XYZ_Data", data = DataSet)
                     file.create_dataset("X_Data", data = DataSetX)
                     file.create_dataset("Y_Data", data = DataSetY)
                     file.create_dataset("Z_Data", data = DataSetZ)
-                    print('LorenzDataSet_' + str(self.time) + 's_Set' + str(x+1) + '_complete')
+                    print('LorenzDataSet_' + str(self.time) + 's_Set' + str(i+1) + '_complete')
                     file.close()
 
 
-#%%
+
+
+### Test of TimeSeriesData below
+# sigma = 10
+# rho = 28
+# beta = 8/3
+# dt = .001
+# time = 20
+# datasets = 3
+
+# Test = LorenzDataGenerator(sigma, rho, beta, time, dt, datasets)
+# Test.GenerateData()
+
 # import h5py
 # import numpy as np
-# view = h5py.File('LorenzDataSet_0.h5py', 'r')
+# view = h5py.File('LorenzDataSet_20s_Set1.h5py', 'r')
 # view.keys()
-# view1 = view.get("X_Data")
-# view1 = np.array(view1)
-# print(view1.shape)
-#%%
