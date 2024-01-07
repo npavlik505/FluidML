@@ -19,8 +19,6 @@ PROJECT_ROOT = os.path.abspath(os.path.join(
 )
 sys.path.append(PROJECT_ROOT)
 
-print(sys.path)
-
 
 
 device = torch.device("cuda:0")
@@ -273,6 +271,9 @@ dt = .001
 def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learnings):
     env = LorenzEnv(sigma, rho, beta, dt)
 
+    testt1 = 0
+    testt2 = 0
+
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
     max_action = float(env.action_space.high[0])
@@ -282,10 +283,13 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
 
     noise_std = 0.1 * max_action  # the std of Gaussian noise for exploration
 
+
+#Note: Eventually Program the NN to be reinitialized at the beginning of each learning
     for total_learnings in range(Learnings):
         print("This is learning ", str(total_learnings + 1))
+        testt1 = 0
+        testt2 = 0
         LearningAveMSE = []
-        action_history = []
         state_data = []
         for Episode in range(Episodes):
             s = env.reset()
@@ -343,13 +347,41 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                 else:
                     EpAveMSE = ((EpAveMSE*(episode_steps-1)) + (abs(s[0] - env.Ftarget[0])**2+abs(s[1] - env.Ftarget[1])**2+abs(s[2] - env.Ftarget[2])**2))/episode_steps
                 if episode_steps == max_episode_steps-1:
-                    print('End of Episode ' + str(Episode+1))
+                    #print('End of Episode ' + str(Episode+1))
                     LearningAveMSE.append(EpAveMSE)
                     if EpAveMSE == min(LearningAveMSE):
                         #BestStateData.clear()
                         Best_State_Data = state_data
-                    print('Episode Number:', Episode+1)
+
+                        #Deleteing previous file, method 1
+                        Control = os.path.dirname(os.path.abspath(__file__))
+                        FluidML = os.path.abspath(os.path.join(Control, '..'))
+                        myfilepath1 = os.path.join(FluidML, 'BestParamsActor_Learning' + str(total_learnings+1) + '.pt')
+                        myfilepath2 = os.path.join(FluidML, 'BestParamsCritic_Learning' + str(total_learnings+1) + '.pt')
+
+                        if os.path.exists(myfilepath1):
+                            os.remove(myfilepath1)
+                            testt1 += 1
+                            print("we've deleted " + str(testt1) + " actor files")
+                        if os.path.exists(myfilepath2):
+                            os.remove(myfilepath2)
+                            testt2 += 1
+                            print("we've deleted " + str(testt2) + " critic files")
+                        
+                        # #Deleteing prvoious file, method 2 (more pythonic, maybe not applicable)
+                        # myfilepath = "File path goes here"
+                        # try:
+                        #     os.remove(myfilepath)
+                        #     testt += 1
+                        #     print("we've deleted " + str(testt) + "files")    
+                        # except:
+
+                        torch.save(agent.actor.state_dict(), 'BestParamsActor_Learning' + str(total_learnings+1) + '.pt')
+                        torch.save(agent.critic.state_dict(), 'BestParamsCritic_Learning' + str(total_learnings+1) + '.pt')
+
+                    #print('Episode Number:', Episode+1)
                     print('Episode Ave MSE:', EpAveMSE)
+                    print()
 
                 #if terminated:
                     #break
@@ -363,8 +395,8 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         #print("Best State Data", Best_State_Data)
                         
         print("End of Learning " + str(total_learnings + 1))
-        print("Best State Data length", len( Best_State_Data))
-        xx = torch.linspace(0,Episodes, int(Episodes))
+        print("Best State Data length", len(Best_State_Data))
+        xx = torch.linspace(1,Episodes, int(Episodes))
         yy = LearningAveMSE
 
         plt.figure()
