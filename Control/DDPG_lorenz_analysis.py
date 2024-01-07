@@ -75,10 +75,14 @@ class LorenzEnv(gym.Env):
 
 #STEP
     def step(self, a, s):
-        a = torch.tensor(a)
-        s = torch.tensor(s)
+        #a = torch.tensor(a)
+        a = torch.clone(a) #Trying to get rid of python warnimg for using torch.tensor()
+        #s = torch.tensor(s)
+        s = torch.clone(s) #Trying to get rid of python warnimg for using torch.tensor()
+
         FB4Step = copy.deepcopy(s)
-        s += torch.tensor(self.lorenz(s, a))#, device = 'cuda')
+        #s += torch.tensor(self.lorenz(s, a))#, device = 'cuda')
+        s += torch.clone(self.lorenz(s, a)) #Trying to get rid of python warnimg for using torch.tensor()
         #print('state after step', s,a)
 
         # Reward Paradigm 1                                               #This solved the CPU / CUDA data problems
@@ -165,10 +169,14 @@ class ReplayBuffer(object):
     #Out of the stored data, which is on length self.size, a batch_size number of SARS_dw samples are randomly collected
     def sample(self, batch_size):
         index = np.random.choice(self.size, size=batch_size)  # Randomly sampling
-        batch_s = torch.tensor(self.s[index], dtype=torch.float)
-        batch_a = torch.tensor(self.a[index], dtype=torch.float)
-        batch_r = torch.tensor(self.r[index], dtype=torch.float)
-        batch_s_ = torch.tensor(self.s_[index], dtype=torch.float)
+        # batch_s = torch.tensor(self.s[index], dtype=torch.float)
+        # batch_a = torch.tensor(self.a[index], dtype=torch.float)
+        # batch_r = torch.tensor(self.r[index], dtype=torch.float)
+        # batch_s_ = torch.tensor(self.s_[index], dtype=torch.float)
+        batch_s = torch.clone(self.s[index]) #Trying to get rid of python warnimg for using torch.tensor()
+        batch_a = torch.clone(self.a[index]) #Trying to get rid of python warnimg for using torch.tensor()
+        batch_r = torch.clone(self.r[index]) #Trying to get rid of python warnimg for using torch.tensor()
+        batch_s_ = torch.clone(self.s_[index]) #Trying to get rid of python warnimg for using torch.tensor()
 
         return batch_s, batch_a, batch_r, batch_s_
 
@@ -185,6 +193,7 @@ class DDPG(object):
 
         self.actor = Actor(state_dim, action_dim, self.hidden_width, max_action)
         self.actor_target = copy.deepcopy(self.actor)
+
         self.critic = Critic(state_dim, action_dim, self.hidden_width)
         self.critic_target = copy.deepcopy(self.critic)
 
@@ -194,7 +203,8 @@ class DDPG(object):
         self.MseLoss = nn.MSELoss()
     # An action is chosen by feeding the state into the actor NN which outputs the action a... refreshingly simple :)
     def choose_action(self, s):
-        s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0)
+        #s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0)
+        s = torch.unsqueeze(torch.clone(s), 0) #Trying to get rid of python warnimg for using torch.tensor()
         a = self.actor(s).data.numpy().flatten()
         #a = torch.unsqueeze(torch.tensor(a, dtype=torch.float), 0)
         return a
@@ -362,11 +372,11 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                         if os.path.exists(myfilepath1):
                             os.remove(myfilepath1)
                             testt1 += 1
-                            print("we've deleted " + str(testt1) + " actor files")
+                            #print("we've deleted " + str(testt1) + " actor files")
                         if os.path.exists(myfilepath2):
                             os.remove(myfilepath2)
                             testt2 += 1
-                            print("we've deleted " + str(testt2) + " critic files")
+                            #print("we've deleted " + str(testt2) + " critic files")
                         
                         # #Deleteing prvoious file, method 2 (more pythonic, maybe not applicable)
                         # myfilepath = "File path goes here"
@@ -394,8 +404,8 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                         agent.learn(replay_buffer)
         #print("Best State Data", Best_State_Data)
                         
-        print("End of Learning " + str(total_learnings + 1))
-        print("Best State Data length", len(Best_State_Data))
+        #print("End of Learning " + str(total_learnings + 1))
+        #print("Best State Data length", len(Best_State_Data))
         xx = torch.linspace(1,Episodes, int(Episodes))
         yy = LearningAveMSE
 
