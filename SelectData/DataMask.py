@@ -1,6 +1,14 @@
 ## Test of TimeSeriesData below
 from Source.TimeSeriesData import LorenzDataGenerator
 
+import os
+import sys
+PROJECT_ROOT = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    os.pardir)
+)
+sys.path.append(PROJECT_ROOT)
+
 sigma = 10
 rho = 28
 beta = 8/3

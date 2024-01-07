@@ -10,6 +10,15 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 #from scipy.integrate import solve_ivp
+
+import os
+import sys
+PROJECT_ROOT = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    os.pardir)
+)
+sys.path.append(PROJECT_ROOT)
+
 device = torch.device("cuda:0")
 
 class LorenzEnv(gym.Env):

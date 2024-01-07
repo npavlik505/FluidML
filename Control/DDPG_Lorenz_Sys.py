@@ -15,6 +15,14 @@ import torch.nn.functional as F
 #from scipy.integrate import solve_ivp
 device = torch.device("cuda:0")
 
+import os
+import sys
+PROJECT_ROOT = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    os.pardir)
+)
+sys.path.append(PROJECT_ROOT)
+
 class LorenzEnv(gym.Env):
     #metadata = {'render.modes': ['human']}
 
@@ -241,36 +249,46 @@ class DDPG(object):
 
 device = torch.device("cuda:0")
 
-if __name__ == '__main__':
-    env = LorenzEnv(sigma = 10, rho = 28, beta = 8/3, dt = .001)
+
+
+sigma = 10
+rho = 28
+beta = 8/3
+dt = .001
+
+Episodes = 30
+random_steps = 500
+max_episode_steps = 5000
+update_freq = 5
+evaluate_num = 0
+evaluate_rewards = []
+evaluate_freq = 10  # Evaluate the policy every 'evaluate_freq' steps
+noise_std_value = 0.1 # the std of Gaussian noise for exploration
+
+
+
+def DDPG_lorenz_Control(self, sigma, rho, beta, time, dt, datasets, Episodes, random_steps, update_freq, evaluate_freq, noise_std_value):
+    # "evaluate_freq" Evaluate the policy every 'evaluate_freq' steps
+    evaluate_rewards = []
+    env = LorenzEnv(sigma, rho, beta, dt)
     env_evaluate = env  # When evaluating the policy, we need to rebuild an environment
     number = 1
 
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.shape[0]
     max_action = float(env.action_space.high[0])
-    print(max_action)
 
     agent = DDPG(state_dim, action_dim, max_action)
     replay_buffer = ReplayBuffer(state_dim, action_dim)
 
-
-    max_train_steps= 30
-    random_steps = 500
-
-    max_episode_steps = 5000
-    update_freq = 5
+    max_episode_steps = time/dt
     evaluate_num = 0
-    evaluate_rewards = []
-    evaluate_freq = 10  # Evaluate the policy every 'evaluate_freq' steps
 
-    noise_std = 0.1 * max_action  # the std of Gaussian noise for exploration
+    noise_std = noise_std_value * max_action  # the std of Gaussian noise for exploration
 
     AverageMSE = []
     action_history = []
-    for total_steps in range(max_train_steps):
-        #s = torch.tensor(env.reset(), device = 'cuda')
-        #print(total_steps)
+    for total_steps in range(Episodes):
         s = env.reset()
         #Create test lorenz
         s_test = copy.deepcopy(s)
@@ -336,7 +354,7 @@ if __name__ == '__main__':
             if episode_steps >= random_steps and episode_steps % update_freq == 0:
                 for _ in range(update_freq):
                     agent.learn(replay_buffer)
-    xx = torch.linspace(0,max_train_steps, int(max_train_steps))
+    xx = torch.linspace(0,Episodes, int(Episodes))
     yy = AverageMSE
 
     plt.figure()
@@ -344,3 +362,109 @@ if __name__ == '__main__':
     plt.show()
 
 
+
+
+
+
+
+# if __name__ == '__main__':
+#     env = LorenzEnv(sigma = 10, rho = 28, beta = 8/3, dt = .001)
+#     env_evaluate = env  # When evaluating the policy, we need to rebuild an environment
+#     number = 1
+
+#     state_dim = env.observation_space.shape[0]
+#     action_dim = env.action_space.shape[0]
+#     max_action = float(env.action_space.high[0])
+#     print(max_action)
+
+#     agent = DDPG(state_dim, action_dim, max_action)
+#     replay_buffer = ReplayBuffer(state_dim, action_dim)
+
+
+#     max_train_steps= 30
+#     random_steps = 500
+
+#     max_episode_steps = 5000
+#     update_freq = 5
+#     evaluate_num = 0
+#     evaluate_rewards = []
+#     evaluate_freq = 10  # Evaluate the policy every 'evaluate_freq' steps
+
+#     noise_std = 0.1 * max_action  # the std of Gaussian noise for exploration
+
+#     AverageMSE = []
+#     action_history = []
+#     for total_steps in range(max_train_steps):
+#         #s = torch.tensor(env.reset(), device = 'cuda')
+#         #print(total_steps)
+#         s = env.reset()
+#         #Create test lorenz
+#         s_test = copy.deepcopy(s)
+#         episode_steps = 0
+#         #Figure for Plotting
+#         ######fig = plt.figure()
+#         # if total_steps % 10 == 0:
+#             # fig = plt.figure()
+#             # ax = fig.add_subplot(1, 1, 1, projection='3d')
+#             # ax.set_xlabel('X')
+#             # ax.set_ylabel('Y')
+#             # ax.set_zlabel('Z')
+#         for episode_steps in range(max_episode_steps):
+#             #Test lorenz - get delta
+#             #if episode_steps == 250: print('Sample ICs:', s_test)
+#             #s_test += torch.tensor(env.onlylorenz(s_test))#, device = 'cuda')
+#             #Plotting
+#             #2D Plot
+#             #plt.plot(episode_steps,s[0], markersize=1, marker = '+', color = 'b')
+#             #2D Plot Test
+#             #plt.plot(episode_steps,s_test[0], markersize=1, marker = '+', color = 'c')
+#             #2D Plot X and Y
+#             #FOR PLOTTING
+#             episode_steps += 1
+#             if random_steps != 0:
+#                 random_steps += -25
+#             # if total_steps % 10 == 0:
+#             #     ss = s.to('cpu')
+#             #     ss = ss.numpy()
+#             #     #3D
+#             #     ax.scatter(ss[0],ss[1], ss[2], c=ss[1], s=1, marker = '+')
+
+#             if episode_steps < random_steps:  # Take the random actions in the beginning for the better exploration
+#                 #a = torch.tensor(env.action_space.sample(), device = 'cuda')
+#                 a = env.action_space.sample()
+#                 a = torch.from_numpy(a)
+#                 #if episode_steps % 50 == 0: print('random', a)
+#                 #if episode_steps > 4999: print(total_steps, 'end of random a selection')
+#             else:
+#                 # Add Gaussian noise to actions for exploration
+#                 #a = torch.tensor(agent.choose_action(s), device = 'cuda')
+#                 a = agent.choose_action(s)
+#                 a = (a + np.random.normal(0, noise_std, size=action_dim)).clip(-max_action, max_action)
+#                 a = torch.from_numpy(a)
+#                 #if episode_steps % 50 == 0: print('chosen', a)
+#             #Action History Plot
+#             ########plt.plot(episode_steps,a, markersize=1, marker = '+', color = 'b')
+#             s_, r, terminated, truncated = env.step(a, s)
+#             if episode_steps == 1:
+#                  AveMSE = (((abs(s[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
+#             else:
+#                 AveMSE = ((AveMSE*(episode_steps-1)) + (abs(s[0] - env.Ftarget[0])**2+abs(s[1] - env.Ftarget[1])**2+abs(s[2] - env.Ftarget[2])**2))/episode_steps
+#             if episode_steps == max_episode_steps:
+#                 AverageMSE.append(AveMSE)
+#                 print('Episode Number:', total_steps+1)
+#                 print('Episode Ave MSE:', AveMSE)
+#             #if terminated:
+#                 #break
+#             replay_buffer.store(s, a, r, s_)  # Store the transition
+#             s = s_
+
+#             # Take 50 steps,then update the networks 50 times
+#             if episode_steps >= random_steps and episode_steps % update_freq == 0:
+#                 for _ in range(update_freq):
+#                     agent.learn(replay_buffer)
+#     xx = torch.linspace(0,max_train_steps, int(max_train_steps))
+#     yy = AverageMSE
+
+#     plt.figure()
+#     plt.plot(xx, yy)
+#     plt.show()

@@ -10,6 +10,14 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
+import os
+import sys
+PROJECT_ROOT = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    os.pardir)
+)
+sys.path.append(PROJECT_ROOT)
+
 class LorenzDataGenerator:
 
     def __init__(self, sigma, rho, beta, time, dt, datasets):

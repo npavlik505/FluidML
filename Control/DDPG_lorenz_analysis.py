@@ -1,5 +1,4 @@
 # DDPG for lorenz system
-
 import numpy as np
 import gym
 from gym import spaces
@@ -11,6 +10,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+
+import os
+import sys
+PROJECT_ROOT = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    os.pardir)
+)
+sys.path.append(PROJECT_ROOT)
+
+print(sys.path)
+
+
+
 device = torch.device("cuda:0")
 
 class LorenzEnv(gym.Env):
@@ -234,7 +246,165 @@ class DDPG(object):
         for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
             target_param.data.copy_(self.TAU * param.data + (1 - self.TAU) * target_param.data)
 
+
+
+
+
+
+
 device = torch.device("cuda:0")
+
+#GLOBAL VARIABLES TO BE USED FOR TESTING (BEFORE PACKAGE INTEGRATION)
+#DDPG Control Attributes
+Episodes = 5
+random_steps = 500
+max_episode_steps = 500
+update_freq = 5
+Learnings = 2
+
+#LorenzEnv Attributes
+sigma = 10
+rho = 28
+beta = 8/3
+dt = .001
+#WHEN READY TO INTEGRATE INTO PACKAGE, ADD LorenzEnv PARAMETERS TO DDPGcontrol PARAMETERS
+
+
+def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learnings):
+    env = LorenzEnv(sigma, rho, beta, dt)
+
+    state_dim = env.observation_space.shape[0]
+    action_dim = env.action_space.shape[0]
+    max_action = float(env.action_space.high[0])
+
+    agent = DDPG(state_dim, action_dim, max_action)
+    replay_buffer = ReplayBuffer(state_dim, action_dim)
+
+    noise_std = 0.1 * max_action  # the std of Gaussian noise for exploration
+
+    for total_learnings in range(Learnings):
+        print("This is learning ", str(total_learnings + 1))
+        LearningAveMSE = []
+        action_history = []
+        state_data = []
+        for Episode in range(Episodes):
+            s = env.reset()
+            state_data.clear()
+            state_data.append(s)
+            #Create test lorenz
+            s_test = copy.deepcopy(s)
+            #Figure for Plotting
+            ######fig = plt.figure()
+            # if Episode % 10 == 0:
+                # fig = plt.figure()
+                # ax = fig.add_subplot(1, 1, 1, projection='3d')
+                # ax.set_xlabel('X')
+                # ax.set_ylabel('Y')
+                # ax.set_zlabel('Z')
+            for episode_steps in range(max_episode_steps):
+                #Test lorenz - get delta
+                #if episode_steps == 250: print('Sample ICs:', s_test)
+                #s_test += torch.tensor(env.onlylorenz(s_test))#, device = 'cuda')
+                #Plotting
+                #2D Plot
+                #plt.plot(episode_steps,s[0], markersize=1, marker = '+', color = 'b')
+                #2D Plot Test
+                #plt.plot(episode_steps,s_test[0], markersize=1, marker = '+', color = 'c')
+                #2D Plot X and Y
+                #FOR PLOTTING
+                if random_steps >= 0:
+                    random_steps += -25
+                # if Episode % 10 == 0:
+                #     ss = s.to('cpu')
+                #     ss = ss.numpy()
+                #     #3D
+                #     ax.scatter(ss[0],ss[1], ss[2], c=ss[1], s=1, marker = '+')
+
+                if episode_steps < random_steps:  # Take the random actions in the beginning for the better exploration
+                    #a = torch.tensor(env.action_space.sample(), device = 'cuda')
+                    a = env.action_space.sample()
+                    a = torch.from_numpy(a)
+                    #if episode_steps % 50 == 0: print('random', a)
+                    #if episode_steps > 4999: print(Episode, 'end of random a selection')
+                else:
+                    # Add Gaussian noise to actions for exploration
+                    #a = torch.tensor(agent.choose_action(s), device = 'cuda')
+                    a = agent.choose_action(s)
+                    a = (a + np.random.normal(0, noise_std, size=action_dim)).clip(-max_action, max_action)
+                    a = torch.from_numpy(a)
+                    #if episode_steps % 50 == 0: print('chosen', a)
+                #Action History Plot
+                ########plt.plot(episode_steps,a, markersize=1, marker = '+', color = 'b')
+                s_, r, terminated, truncated = env.step(a, s)
+                state_data.append(s_)
+                if episode_steps == 0:
+                    print('Start of Episode ' + str(Episode+1))
+                    EpAveMSE = (((abs(s[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
+                else:
+                    EpAveMSE = ((EpAveMSE*(episode_steps-1)) + (abs(s[0] - env.Ftarget[0])**2+abs(s[1] - env.Ftarget[1])**2+abs(s[2] - env.Ftarget[2])**2))/episode_steps
+                if episode_steps == max_episode_steps-1:
+                    print('End of Episode ' + str(Episode+1))
+                    LearningAveMSE.append(EpAveMSE)
+                    if EpAveMSE == min(LearningAveMSE):
+                        #BestStateData.clear()
+                        Best_State_Data = state_data
+                    print('Episode Number:', Episode+1)
+                    print('Episode Ave MSE:', EpAveMSE)
+
+                #if terminated:
+                    #break
+                replay_buffer.store(s, a, r, s_)  # Store the transition
+                s = s_
+
+                # Take 50 steps,then update the networks 50 times
+                if episode_steps >= random_steps and episode_steps % update_freq == 0:
+                    for _ in range(update_freq):
+                        agent.learn(replay_buffer)
+        #print("Best State Data", Best_State_Data)
+                        
+        print("End of Learning " + str(total_learnings + 1))
+        print("Best State Data length", len( Best_State_Data))
+        xx = torch.linspace(0,Episodes, int(Episodes))
+        yy = LearningAveMSE
+
+        plt.figure()
+        plt.plot(xx, yy)
+    plt.show()
+
+
+# Testing the Definition
+DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learnings)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# device = torch.device("cuda:0")
 
 # if __name__ == '__main__':
 #     env = LorenzEnv(sigma = 10, rho = 28, beta = 8/3, dt = .001)
@@ -337,27 +507,6 @@ device = torch.device("cuda:0")
 #     plt.figure()
 #     plt.plot(xx, yy)
 #     plt.show()
-print('here')
-import os
-print(os.getcwd())
 
-# print('Hello')
-# sigma = 10
-# rho = 28
-# beta = 8/3
-# dt = .001
-# time = 20
-# datasets = 3
-# import FluidML
 
-# def ModelLoop1(sigma, rho, beta, time, dt, datasets):
-#     from FluidML.Source.TimeSeriesData import LorenzDataGenerator
-#     data = LorenzDataGenerator(sigma, rho, beta, time, dt, datasets)
-#     data.GenerateData()
-#     from Model import SINDy
-#     for i in range(datasets):
-#         CurrentFile = 'LorenzDataSet_20s_Set' + str(i+1) + '.h5py'
-#         print('SINDy model for set ' + str(i+1) )
-#         SINDy.StandardSindy(CurrentFile, dt)
 
-# ModelLoop1(sigma, rho, beta, time, dt, datasets)

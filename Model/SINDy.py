@@ -2,6 +2,14 @@ import h5py
 import numpy as np
 import pysindy as ps
 
+import os
+import sys
+PROJECT_ROOT = os.path.abspath(os.path.join(
+    os.path.dirname(__file__),
+    os.pardir)
+)
+sys.path.append(PROJECT_ROOT)
+
 def StandardSindy(CurrentFile, dt):
     DataSet0 = h5py.File(CurrentFile, 'r')
     Data = DataSet0.get('XYZ_Data')

@@ -25,12 +25,14 @@ rho = 28
 beta = 8/3
 dt = .001
 time = 20
-datasets = 3
+datasets = 1
 
+
+#Modelling Loop Completed w/out masking
 def ModelLoop1(sigma, rho, beta, time, dt, datasets):
     from Source.TimeSeriesData import LorenzDataGenerator
     data = LorenzDataGenerator(sigma, rho, beta, time, dt, datasets)
-    data.GenerateData()
+    data.GenerateData() #Produces datasets with same name scheme as "CurrentFile" below
     from Model import SINDy
     for i in range(datasets):
         CurrentFile = 'LorenzDataSet_20s_Set' + str(i+1) + '.h5py'
@@ -38,6 +40,11 @@ def ModelLoop1(sigma, rho, beta, time, dt, datasets):
         SINDy.StandardSindy(CurrentFile, dt)
 
 ModelLoop1(sigma, rho, beta, time, dt, datasets)
+
+#Control Loop w/out masking
+def ControlLoop1(sigma, rho, beta, time, dt, datasets):
+    from Control.DDPG_Lorenz_Sys import LorenzEnv
+    CtrlLorenz = LorenzEnv(sigma, rho, beta, dt)
 
 
 
