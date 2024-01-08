@@ -10,6 +10,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from mpl_toolkits.mplot3d import Axes3D
 
 import os
 import sys
@@ -265,10 +266,10 @@ device = torch.device("cuda:0")
 #GLOBAL VARIABLES TO BE USED FOR TESTING (BEFORE PACKAGE INTEGRATION)
 #DDPG Control Attributes
 Episodes = 5
-random_steps = 500
-max_episode_steps = 500
+random_steps = 500 #Ususally at 500
+max_episode_steps = 50000 #Usually at 5000
 update_freq = 5
-Learnings = 2
+Learnings = 1
 
 #LorenzEnv Attributes
 sigma = 10
@@ -301,30 +302,17 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         testt2 = 0
         LearningAveMSE = []
         state_data = []
+        state_data_noforcing = []
         for Episode in range(Episodes):
             s = env.reset()
-            state_data.clear()
-            state_data.append(s)
+            state_data = torch.tensor(s)
             #Create test lorenz
-            s_test = copy.deepcopy(s)
-            #Figure for Plotting
-            ######fig = plt.figure()
-            # if Episode % 10 == 0:
-                # fig = plt.figure()
-                # ax = fig.add_subplot(1, 1, 1, projection='3d')
-                # ax.set_xlabel('X')
-                # ax.set_ylabel('Y')
-                # ax.set_zlabel('Z')
+            s_noforcing = torch.clone(s)
+            state_data_noforcing = s_noforcing.view(1,3)
             for episode_steps in range(max_episode_steps):
                 #Test lorenz - get delta
-                #if episode_steps == 250: print('Sample ICs:', s_test)
-                #s_test += torch.tensor(env.onlylorenz(s_test))#, device = 'cuda')
-                #Plotting
-                #2D Plot
-                #plt.plot(episode_steps,s[0], markersize=1, marker = '+', color = 'b')
-                #2D Plot Test
-                #plt.plot(episode_steps,s_test[0], markersize=1, marker = '+', color = 'c')
-                #2D Plot X and Y
+                s_noforcing += env.onlylorenz(s_noforcing)
+                state_data_noforcing = torch.cat((state_data_noforcing, s_noforcing.view(1,3)), dim = 0)
                 #FOR PLOTTING
                 if random_steps >= 0:
                     random_steps += -25
@@ -350,7 +338,8 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                 #Action History Plot
                 ########plt.plot(episode_steps,a, markersize=1, marker = '+', color = 'b')
                 s_, r, terminated, truncated = env.step(a, s)
-                state_data.append(s_)
+                #state_data.append(s_)
+                state_data = torch.cat([state_data.view(-1,3), s_.view(1,3)])
                 if episode_steps == 0:
                     print('Start of Episode ' + str(Episode+1))
                     EpAveMSE = (((abs(s[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
@@ -361,7 +350,8 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                     LearningAveMSE.append(EpAveMSE)
                     if EpAveMSE == min(LearningAveMSE):
                         #BestStateData.clear()
-                        Best_State_Data = state_data
+                        BSD = np.array(state_data)
+                        UFSD = np.array(state_data_noforcing)
 
                         #Deleteing previous file, method 1
                         Control = os.path.dirname(os.path.abspath(__file__))
@@ -403,12 +393,32 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                     for _ in range(update_freq):
                         agent.learn(replay_buffer)
         #print("Best State Data", Best_State_Data)
-                        
+        Best_State_Data_Storage = {}
+        Best_State_Data_Storage['Learning_' + str(total_learnings + 1)] = BSD
+        Unforced_State_Data_Storage = {}
+        Unforced_State_Data_Storage['Learning_' + str(total_learnings + 1)] = UFSD
+        
+        fig1 = plt.figure()
+        forcing = fig1.add_subplot(111, projection = '3d')
+        forcing.plot(BSD[:,0], BSD[:,1], BSD[:,2], label = 'Best Forcing Policy')
+        forcing.set_title('Best x Forcing Policy')
+        forcing.set_xlabel('X')
+        forcing.set_ylabel('Y')
+        forcing.set_zlabel('Z')
+
+        fig2 = plt.figure()
+        noforcing = fig2.add_subplot(111, projection = '3d')
+        noforcing.plot(UFSD[:,0], UFSD[:,1], UFSD[:,2], label = 'Corresponding Unforced Lorenz')              
+        noforcing.set_title('Corresponding Unforced Lorenz')
+        noforcing.set_xlabel('X')
+        noforcing.set_ylabel('Y')
+        noforcing.set_zlabel('Z')
+
         #print("End of Learning " + str(total_learnings + 1))
         #print("Best State Data length", len(Best_State_Data))
+
         xx = torch.linspace(1,Episodes, int(Episodes))
         yy = LearningAveMSE
-
         plt.figure()
         plt.plot(xx, yy)
     plt.show()
