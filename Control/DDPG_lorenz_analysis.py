@@ -12,6 +12,13 @@ import torch.optim as optim
 import torch.nn.functional as F
 from mpl_toolkits.mplot3d import Axes3D
 
+import pandas as pd
+import seaborn as sns
+sns.set(style="whitegrid",font_scale=2)
+import matplotlib.collections as clt
+import ptitprince as pt
+from ptitprince import RainCloud
+
 import os
 import sys
 PROJECT_ROOT = os.path.abspath(os.path.join(
@@ -266,10 +273,10 @@ device = torch.device("cuda:0")
 #GLOBAL VARIABLES TO BE USED FOR TESTING (BEFORE PACKAGE INTEGRATION)
 #DDPG Control Attributes
 Episodes = 5
-random_steps = 50 #Ususally at 500
-max_episode_steps = 500 #Usually at 5000
+random_steps = 500 #Ususally at 500
+max_episode_steps = 5000 #Usually at 5000
 update_freq = 5
-Learnings = 1
+Learnings = 2
 
 #LorenzEnv Attributes
 sigma = 10
@@ -407,17 +414,85 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         noforcing.set_ylabel('Y')
         noforcing.set_zlabel('Z')
 
-        #Plot the MSE
+        #Plot the MSE for X forced lorenz
         xx = torch.linspace(1,Episodes, int(Episodes))
         yy = LearningAveMSE
         plt.figure()
         plt.plot(xx, yy)
 
+        #Plot the MSE for unforced lorenz
+
         #Plot the spatial fluctuations (half-eye (density + interval) plots)
-    
+        #Forcing
+        Xaverage = sum(BSD[:,0])/len(BSD[:,0])
+        Yaverage = sum(BSD[:,1])/len(BSD[:,1])
+        Zaverage = sum(BSD[:,2])/len(BSD[:,2])
+        X_flux_forcing = []
+        Y_flux_forcing = []
+        Z_flux_forcing = []
+        for x in range(len(BSD[:,0])):
+            X_flux_forcing.append(BSD[x,0]-Xaverage)
+            Y_flux_forcing.append(BSD[x,1]-Yaverage)
+            Z_flux_forcing.append(BSD[x,2]-Zaverage)
+        index = list(range(1, len(X_flux_forcing)+1))
+        AllData1 = np.array([index, X_flux_forcing, Y_flux_forcing, Z_flux_forcing])
+        AllData1 = np.transpose(AllData1)
+        AllData1 = pd.DataFrame(AllData1, columns = ['Index', 'X', 'Y', 'Z'])
+        DDF1 = pd.melt(AllData1, id_vars = ['Index'], value_vars = ['X', 'Y', 'Z'], var_name = 'state values', value_name = 'Dist From Equil')
+
+        f, ax = plt.subplots(figsize=(12, 11))
+
+        dy = 'Dist From Equil'; dx = 'state values'; ort = "v"
+        # Draw a violinplot with a narrower bandwidth than the default
+        ax=pt.half_violinplot(data = DDF1, palette = "Set2", bw=.2,  linewidth=1,cut=0.,\
+                        scale="area", width=.8, inner=None,orient=ort,x=dx,y=dy)
+        ax=sns.stripplot(data=DDF1, palette="Set2", edgecolor="white",size=2,orient=ort,\
+                        x=dx,y=dy,jitter=1,zorder=0)
+        ax=sns.boxplot(data=DDF1, color="black",orient=ort,width=.15,x=dx,y=dy,zorder=10,\
+                    showcaps=True,boxprops={'facecolor':'none', "zorder":10},\
+                    showfliers=True,whiskerprops={'linewidth':2, "zorder":10},saturation=1)
+        #ax = sns.pointplot(x=dx, y=dy, data=ddf,color='red')
+        # Finalize the figure
+        f.suptitle('X forced Lorenz State Fluctuations', fontsize=16)
+        ax.set(ylim=(20, -20))
+        sns.despine(left=True)
 
 
-    
+
+        #No Forcing UFSD State Data
+        Xaveragenf = sum(UFSD[:,0])/len(UFSD[:,0])
+        Yaveragenf = sum(UFSD[:,1])/len(UFSD[:,1])
+        Zaveragenf = sum(UFSD[:,2])/len(UFSD[:,2])
+        X_flux_noforcing = []
+        Y_flux_noforcing = []
+        Z_flux_noforcing = []
+        for x in range(len(BSD[:,0])):
+            X_flux_noforcing.append(BSD[x,0]-Xaveragenf)
+            Y_flux_noforcing.append(BSD[x,1]-Yaveragenf)
+            Z_flux_noforcing.append(BSD[x,2]-Zaveragenf)
+        index = list(range(1, len(X_flux_noforcing)+1))
+        AllData2 = np.array([index, X_flux_noforcing, Y_flux_noforcing, Z_flux_noforcing])
+        AllData2 = np.transpose(AllData2)
+        AllData2 = pd.DataFrame(AllData2, columns = ['Index', 'X', 'Y', 'Z'])
+        DDF2 = pd.melt(AllData2, id_vars = ['Index'], value_vars = ['X', 'Y', 'Z'], var_name = 'state values', value_name = 'Dist From Equil')
+
+        f, ax = plt.subplots(figsize=(12, 11))
+
+        dy = 'Dist From Equil'; dx = 'state values'; ort = "v"
+        # Draw a violinplot with a narrower bandwidth than the default
+        ax=pt.half_violinplot(data = DDF2, palette = "Set2", bw=.2,  linewidth=1,cut=0.,\
+                        scale="area", width=.8, inner=None,orient=ort,x=dx,y=dy)
+        ax=sns.stripplot(data=DDF2, palette="Set2", edgecolor="white",size=2,orient=ort,\
+                        x=dx,y=dy,jitter=1,zorder=0)
+        ax=sns.boxplot(data=DDF2, color="black",orient=ort,width=.15,x=dx,y=dy,zorder=10,\
+                    showcaps=True,boxprops={'facecolor':'none', "zorder":10},\
+                    showfliers=True,whiskerprops={'linewidth':2, "zorder":10},saturation=1)
+        #ax = sns.pointplot(x=dx, y=dy, data=ddf,color='red')
+        # Finalize the figure
+        f.suptitle('Unforced Lorenz State Fluctuations', fontsize=16)
+        ax.set(ylim=(20, -20))
+        sns.despine(left=True)
+
     #Show plots only after all Learnings are Complete
     plt.show()
 
