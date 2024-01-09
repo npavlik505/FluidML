@@ -266,8 +266,8 @@ device = torch.device("cuda:0")
 #GLOBAL VARIABLES TO BE USED FOR TESTING (BEFORE PACKAGE INTEGRATION)
 #DDPG Control Attributes
 Episodes = 5
-random_steps = 500 #Ususally at 500
-max_episode_steps = 50000 #Usually at 5000
+random_steps = 50 #Ususally at 500
+max_episode_steps = 500 #Usually at 5000
 update_freq = 5
 Learnings = 1
 
@@ -285,12 +285,12 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
     testt1 = 0
     testt2 = 0
 
-    state_dim = env.observation_space.shape[0]
-    action_dim = env.action_space.shape[0]
-    max_action = float(env.action_space.high[0])
+    state_dim = env.observation_space.shape[0] #Dimension of the state space (in this case three continous values for x, y, and z of the Lorenz System)
+    action_dim = env.action_space.shape[0] #Dimension of the action space (in this case continuous values between 0 and 50)
+    max_action = float(env.action_space.high[0]) #The max forcing that can be applied
 
-    agent = DDPG(state_dim, action_dim, max_action)
-    replay_buffer = ReplayBuffer(state_dim, action_dim)
+    agent = DDPG(state_dim, action_dim, max_action) #Initializes the DDPG algorithm (Class containing the Actor-Critic NN that chooses x forcing action)
+    replay_buffer = ReplayBuffer(state_dim, action_dim) #Initializes the ReplayBuffer (stores s,a,s_,r sequences for batch learning)
 
     noise_std = 0.1 * max_action  # the std of Gaussian noise for exploration
 
@@ -298,88 +298,78 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
 #Note: Eventually Program the NN to be reinitialized at the beginning of each learning
     for total_learnings in range(Learnings):
         print("This is learning ", str(total_learnings + 1))
+        #testt1 and testt2 used when validating file management for actor and critic parameters (may delete eventually)
         testt1 = 0
         testt2 = 0
+
+        #Initialize list to store the average MSE
         LearningAveMSE = []
-        state_data = []
-        state_data_noforcing = []
+
         for Episode in range(Episodes):
+            #Generate initial value for episode (note: forced ICs = Unforced ICs)
             s = env.reset()
             state_data = torch.tensor(s)
-            #Create test lorenz
+ 
             s_noforcing = torch.clone(s)
             state_data_noforcing = s_noforcing.view(1,3)
+
+            #Decriments the random_steps value so fewer are taken each episode (Consider if random steps are actually needed)
+            if random_steps >= 0:
+                random_steps += -25
+
             for episode_steps in range(max_episode_steps):
-                #Test lorenz - get delta
+
+                #Generate the unforced lorenz values
                 s_noforcing += env.onlylorenz(s_noforcing)
                 state_data_noforcing = torch.cat((state_data_noforcing, s_noforcing.view(1,3)), dim = 0)
-                #FOR PLOTTING
-                if random_steps >= 0:
-                    random_steps += -25
-                # if Episode % 10 == 0:
-                #     ss = s.to('cpu')
-                #     ss = ss.numpy()
-                #     #3D
-                #     ax.scatter(ss[0],ss[1], ss[2], c=ss[1], s=1, marker = '+')
 
+                #Randomly select, or have the NN choose, an action for the current step (i.e. forcing value on x)
                 if episode_steps < random_steps:  # Take the random actions in the beginning for the better exploration
-                    #a = torch.tensor(env.action_space.sample(), device = 'cuda')
                     a = env.action_space.sample()
                     a = torch.from_numpy(a)
-                    #if episode_steps % 50 == 0: print('random', a)
-                    #if episode_steps > 4999: print(Episode, 'end of random a selection')
                 else:
                     # Add Gaussian noise to actions for exploration
-                    #a = torch.tensor(agent.choose_action(s), device = 'cuda')
                     a = agent.choose_action(s)
                     a = (a + np.random.normal(0, noise_std, size=action_dim)).clip(-max_action, max_action)
                     a = torch.from_numpy(a)
-                    #if episode_steps % 50 == 0: print('chosen', a)
-                #Action History Plot
-                ########plt.plot(episode_steps,a, markersize=1, marker = '+', color = 'b')
+                
+
                 s_, r, terminated, truncated = env.step(a, s)
-                #state_data.append(s_)
                 state_data = torch.cat([state_data.view(-1,3), s_.view(1,3)])
+
+                #Calculate the average MSE for each episode
                 if episode_steps == 0:
                     print('Start of Episode ' + str(Episode+1))
                     EpAveMSE = (((abs(s[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
                 else:
                     EpAveMSE = ((EpAveMSE*(episode_steps-1)) + (abs(s[0] - env.Ftarget[0])**2+abs(s[1] - env.Ftarget[1])**2+abs(s[2] - env.Ftarget[2])**2))/episode_steps
+
+                #Executes after the final step in each episode    
                 if episode_steps == max_episode_steps-1:
-                    #print('End of Episode ' + str(Episode+1))
                     LearningAveMSE.append(EpAveMSE)
                     if EpAveMSE == min(LearningAveMSE):
-                        #BestStateData.clear()
+
+                        #Store the State Data for the Forcing and Non-Forcing Cases as np arrays for plotting
                         BSD = np.array(state_data)
                         UFSD = np.array(state_data_noforcing)
 
-                        #Deleteing previous file, method 1
+                        #Create path to parameter file
                         Control = os.path.dirname(os.path.abspath(__file__))
                         FluidML = os.path.abspath(os.path.join(Control, '..'))
                         myfilepath1 = os.path.join(FluidML, 'BestParamsActor_Learning' + str(total_learnings+1) + '.pt')
                         myfilepath2 = os.path.join(FluidML, 'BestParamsCritic_Learning' + str(total_learnings+1) + '.pt')
-
+                        #Delete parameter file for previous best performing policy
                         if os.path.exists(myfilepath1):
                             os.remove(myfilepath1)
                             testt1 += 1
-                            #print("we've deleted " + str(testt1) + " actor files")
                         if os.path.exists(myfilepath2):
                             os.remove(myfilepath2)
                             testt2 += 1
-                            #print("we've deleted " + str(testt2) + " critic files")
-                        
-                        # #Deleteing prvoious file, method 2 (more pythonic, maybe not applicable)
-                        # myfilepath = "File path goes here"
-                        # try:
-                        #     os.remove(myfilepath)
-                        #     testt += 1
-                        #     print("we've deleted " + str(testt) + "files")    
-                        # except:
-
+                        #Create parameter file for new best performing policy
                         torch.save(agent.actor.state_dict(), 'BestParamsActor_Learning' + str(total_learnings+1) + '.pt')
                         torch.save(agent.critic.state_dict(), 'BestParamsCritic_Learning' + str(total_learnings+1) + '.pt')
 
-                    #print('Episode Number:', Episode+1)
+                    #Print the average Mean Squared Error for the Episode
                     print('Episode Ave MSE:', EpAveMSE)
                     print()
 
@@ -392,12 +382,14 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                 if episode_steps >= random_steps and episode_steps % update_freq == 0:
                     for _ in range(update_freq):
                         agent.learn(replay_buffer)
-        #print("Best State Data", Best_State_Data)
+
+        #Store the state data for the best performing policy of each Learning 
         Best_State_Data_Storage = {}
         Best_State_Data_Storage['Learning_' + str(total_learnings + 1)] = BSD
         Unforced_State_Data_Storage = {}
         Unforced_State_Data_Storage['Learning_' + str(total_learnings + 1)] = UFSD
         
+        #Plot the x forced state data
         fig1 = plt.figure()
         forcing = fig1.add_subplot(111, projection = '3d')
         forcing.plot(BSD[:,0], BSD[:,1], BSD[:,2], label = 'Best Forcing Policy')
@@ -406,6 +398,7 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         forcing.set_ylabel('Y')
         forcing.set_zlabel('Z')
 
+        #Plot the unforced state data
         fig2 = plt.figure()
         noforcing = fig2.add_subplot(111, projection = '3d')
         noforcing.plot(UFSD[:,0], UFSD[:,1], UFSD[:,2], label = 'Corresponding Unforced Lorenz')              
@@ -414,151 +407,20 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         noforcing.set_ylabel('Y')
         noforcing.set_zlabel('Z')
 
-        #print("End of Learning " + str(total_learnings + 1))
-        #print("Best State Data length", len(Best_State_Data))
-
+        #Plot the MSE
         xx = torch.linspace(1,Episodes, int(Episodes))
         yy = LearningAveMSE
         plt.figure()
         plt.plot(xx, yy)
+
+        #Plot the spatial fluctuations (half-eye (density + interval) plots)
+    
+
+
+    
+    #Show plots only after all Learnings are Complete
     plt.show()
 
 
-# Testing the Definition
+#Testing the Definition
 DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learnings)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# device = torch.device("cuda:0")
-
-# if __name__ == '__main__':
-#     env = LorenzEnv(sigma = 10, rho = 28, beta = 8/3, dt = .001)
-#     env_evaluate = env  # When evaluating the policy, we need to rebuild an environment
-#     number = 1
-
-#     state_dim = env.observation_space.shape[0]
-#     action_dim = env.action_space.shape[0]
-#     max_action = float(env.action_space.high[0])
-#     print(max_action)
-
-#     agent = DDPG(state_dim, action_dim, max_action)
-#     replay_buffer = ReplayBuffer(state_dim, action_dim)
-
-
-#     max_train_steps= 30
-#     random_steps = 500
-
-#     max_episode_steps = 5000
-#     update_freq = 5
-#     evaluate_num = 0
-#     evaluate_rewards = []
-#     evaluate_freq = 10  # Evaluate the policy every 'evaluate_freq' steps
-
-#     noise_std = 0.1 * max_action  # the std of Gaussian noise for exploration
-
-#     AverageMSE = []
-#     action_history = []
-#     for total_steps in range(max_train_steps):
-#         #s = torch.tensor(env.reset(), device = 'cuda')
-#         #print(total_steps)
-#         s = env.reset()
-#         #Create test lorenz
-#         s_test = copy.deepcopy(s)
-#         episode_steps = 0
-#         #Figure for Plotting
-#         ######fig = plt.figure()
-#         # if total_steps % 10 == 0:
-#             # fig = plt.figure()
-#             # ax = fig.add_subplot(1, 1, 1, projection='3d')
-#             # ax.set_xlabel('X')
-#             # ax.set_ylabel('Y')
-#             # ax.set_zlabel('Z')
-#         for episode_steps in range(max_episode_steps):
-#             #Test lorenz - get delta
-#             #if episode_steps == 250: print('Sample ICs:', s_test)
-#             #s_test += torch.tensor(env.onlylorenz(s_test))#, device = 'cuda')
-#             #Plotting
-#             #2D Plot
-#             #plt.plot(episode_steps,s[0], markersize=1, marker = '+', color = 'b')
-#             #2D Plot Test
-#             #plt.plot(episode_steps,s_test[0], markersize=1, marker = '+', color = 'c')
-#             #2D Plot X and Y
-#             #FOR PLOTTING
-#             episode_steps += 1
-#             if random_steps != 0:
-#                 random_steps += -25
-#             # if total_steps % 10 == 0:
-#             #     ss = s.to('cpu')
-#             #     ss = ss.numpy()
-#             #     #3D
-#             #     ax.scatter(ss[0],ss[1], ss[2], c=ss[1], s=1, marker = '+')
-
-#             if episode_steps < random_steps:  # Take the random actions in the beginning for the better exploration
-#                 #a = torch.tensor(env.action_space.sample(), device = 'cuda')
-#                 a = env.action_space.sample()
-#                 a = torch.from_numpy(a)
-#                 #if episode_steps % 50 == 0: print('random', a)
-#                 #if episode_steps > 4999: print(total_steps, 'end of random a selection')
-#             else:
-#                 # Add Gaussian noise to actions for exploration
-#                 #a = torch.tensor(agent.choose_action(s), device = 'cuda')
-#                 a = agent.choose_action(s)
-#                 a = (a + np.random.normal(0, noise_std, size=action_dim)).clip(-max_action, max_action)
-#                 a = torch.from_numpy(a)
-#                 #if episode_steps % 50 == 0: print('chosen', a)
-#             #Action History Plot
-#             ########plt.plot(episode_steps,a, markersize=1, marker = '+', color = 'b')
-#             s_, r, terminated, truncated = env.step(a, s)
-#             if episode_steps == 1:
-#                  AveMSE = (((abs(s[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
-#             else:
-#                 AveMSE = ((AveMSE*(episode_steps-1)) + (abs(s[0] - env.Ftarget[0])**2+abs(s[1] - env.Ftarget[1])**2+abs(s[2] - env.Ftarget[2])**2))/episode_steps
-#             if episode_steps == max_episode_steps:
-#                 AverageMSE.append(AveMSE)
-#                 print('Episode Number:', total_steps+1)
-#                 print('Episode Ave MSE:', AveMSE)
-#             #if terminated:
-#                 #break
-#             replay_buffer.store(s, a, r, s_)  # Store the transition
-#             s = s_
-
-#             # Take 50 steps,then update the networks 50 times
-#             if episode_steps >= random_steps and episode_steps % update_freq == 0:
-#                 for _ in range(update_freq):
-#                     agent.learn(replay_buffer)
-#     xx = torch.linspace(0,max_train_steps, int(max_train_steps))
-#     yy = AverageMSE
-
-#     plt.figure()
-#     plt.plot(xx, yy)
-#     plt.show()
-
-
-
