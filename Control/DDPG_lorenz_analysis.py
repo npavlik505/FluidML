@@ -437,7 +437,10 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         X_flux_forcing = []
         Y_flux_forcing = []
         Z_flux_forcing = []
-        for x in range(len(BSD[:,0])):
+        interval_of_analysis = len(BSD[:,0])*2//3
+        print('The last ' + str(interval_of_analysis) + ' steps are included in RainCloud plots')
+        for x in range(interval_of_analysis):
+            x = x + (len(BSD[:,0]) - interval_of_analysis)
             X_flux_forcing.append(BSD[x,0]-Xequil)
             Y_flux_forcing.append(BSD[x,1]-Yequil)
             Z_flux_forcing.append(BSD[x,2]-Zequil)
@@ -470,7 +473,7 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         X_flux_noforcing = []
         Y_flux_noforcing = []
         Z_flux_noforcing = []
-        for x in range(len(BSD[:,0])):
+        for x in range(interval_of_analysis):
             X_flux_noforcing.append(UFSD[x,0]-Xequil)
             Y_flux_noforcing.append(UFSD[x,1]-Yequil)
             Z_flux_noforcing.append(UFSD[x,2]-Zequil)
