@@ -177,10 +177,6 @@ class ReplayBuffer(object):
     #Out of the stored data, which is on length self.size, a batch_size number of SARS_dw samples are randomly collected
     def sample(self, batch_size):
         index = np.random.choice(self.size, size=batch_size)  # Randomly sampling
-        # batch_s = torch.tensor(self.s[index], dtype=torch.float)
-        # batch_a = torch.tensor(self.a[index], dtype=torch.float)
-        # batch_r = torch.tensor(self.r[index], dtype=torch.float)
-        # batch_s_ = torch.tensor(self.s_[index], dtype=torch.float)
         batch_s = torch.clone(self.s[index]) #Trying to get rid of python warnimg for using torch.tensor()
         batch_a = torch.clone(self.a[index]) #Trying to get rid of python warnimg for using torch.tensor()
         batch_r = torch.clone(self.r[index]) #Trying to get rid of python warnimg for using torch.tensor()
@@ -309,7 +305,7 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         testt1 = 0
         testt2 = 0
 
-        #Initialize list to store the average MSE
+        #Initialize lists to store the average MSE for forcing and non-forcing cases
         LearningAveMSE = []
         LearningAveMSE_NF = []
 
@@ -435,16 +431,16 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
 
         #Plot the spatial fluctuations (half-eye (density + interval) plots)
         #Forcing
-        Xaverage = sum(BSD[:,0])/len(BSD[:,0])
-        Yaverage = sum(BSD[:,1])/len(BSD[:,1])
-        Zaverage = sum(BSD[:,2])/len(BSD[:,2])
+        Xequil = env.Ftarget[0]
+        Yequil = env.Ftarget[1]
+        Zequil = env.Ftarget[2]    
         X_flux_forcing = []
         Y_flux_forcing = []
         Z_flux_forcing = []
         for x in range(len(BSD[:,0])):
-            X_flux_forcing.append(BSD[x,0]-Xaverage)
-            Y_flux_forcing.append(BSD[x,1]-Yaverage)
-            Z_flux_forcing.append(BSD[x,2]-Zaverage)
+            X_flux_forcing.append(BSD[x,0]-Xequil)
+            Y_flux_forcing.append(BSD[x,1]-Yequil)
+            Z_flux_forcing.append(BSD[x,2]-Zequil)
         index = list(range(1, len(X_flux_forcing)+1))
         AllData1 = np.array([index, X_flux_forcing, Y_flux_forcing, Z_flux_forcing])
         AllData1 = np.transpose(AllData1)
@@ -470,17 +466,14 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
 
 
 
-        #No Forcing UFSD State Data
-        Xaveragenf = sum(UFSD[:,0])/len(UFSD[:,0])
-        Yaveragenf = sum(UFSD[:,1])/len(UFSD[:,1])
-        Zaveragenf = sum(UFSD[:,2])/len(UFSD[:,2])
+        #No Forcing      
         X_flux_noforcing = []
         Y_flux_noforcing = []
         Z_flux_noforcing = []
         for x in range(len(BSD[:,0])):
-            X_flux_noforcing.append(BSD[x,0]-Xaveragenf)
-            Y_flux_noforcing.append(BSD[x,1]-Yaveragenf)
-            Z_flux_noforcing.append(BSD[x,2]-Zaveragenf)
+            X_flux_noforcing.append(UFSD[x,0]-Xequil)
+            Y_flux_noforcing.append(UFSD[x,1]-Yequil)
+            Z_flux_noforcing.append(UFSD[x,2]-Zequil)
         index = list(range(1, len(X_flux_noforcing)+1))
         AllData2 = np.array([index, X_flux_noforcing, Y_flux_noforcing, Z_flux_noforcing])
         AllData2 = np.transpose(AllData2)
