@@ -311,6 +311,7 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
 
         #Initialize list to store the average MSE
         LearningAveMSE = []
+        LearningAveMSE_NF = []
 
         for Episode in range(Episodes):
             #Generate initial value for episode (note: forced ICs = Unforced ICs)
@@ -344,16 +345,24 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                 s_, r, terminated, truncated = env.step(a, s)
                 state_data = torch.cat([state_data.view(-1,3), s_.view(1,3)])
 
-                #Calculate the average MSE for each episode
+                #Calculate the average MSE for each X forced episode 
                 if episode_steps == 0:
                     print('Start of Episode ' + str(Episode+1))
                     EpAveMSE = (((abs(s[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
                 else:
                     EpAveMSE = ((EpAveMSE*(episode_steps-1)) + (abs(s[0] - env.Ftarget[0])**2+abs(s[1] - env.Ftarget[1])**2+abs(s[2] - env.Ftarget[2])**2))/episode_steps
 
+
+                #Calculate the average MSE for each unforced episode 
+                if episode_steps == 0:
+                    EpAveMSE_NF = (((abs(s_noforcing[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
+                else:
+                    EpAveMSE_NF = ((EpAveMSE_NF*(episode_steps-1)) + (abs(s_noforcing[0] - env.Ftarget[0])**2+abs(s_noforcing[1] - env.Ftarget[1])**2+abs(s_noforcing[2] - env.Ftarget[2])**2))/episode_steps                
+
                 #Executes after the final step in each episode    
                 if episode_steps == max_episode_steps-1:
                     LearningAveMSE.append(EpAveMSE)
+                    LearningAveMSE_NF.append(EpAveMSE_NF)
                     if EpAveMSE == min(LearningAveMSE):
 
                         #Store the State Data for the Forcing and Non-Forcing Cases as np arrays for plotting
@@ -400,7 +409,7 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         fig1 = plt.figure()
         forcing = fig1.add_subplot(111, projection = '3d')
         forcing.plot(BSD[:,0], BSD[:,1], BSD[:,2], label = 'Best Forcing Policy')
-        forcing.set_title('Best x Forcing Policy')
+        forcing.set_title('Best x Forcing Policy - Learning ' + str(total_learnings + 1))
         forcing.set_xlabel('X')
         forcing.set_ylabel('Y')
         forcing.set_zlabel('Z')
@@ -409,18 +418,20 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
         fig2 = plt.figure()
         noforcing = fig2.add_subplot(111, projection = '3d')
         noforcing.plot(UFSD[:,0], UFSD[:,1], UFSD[:,2], label = 'Corresponding Unforced Lorenz')              
-        noforcing.set_title('Corresponding Unforced Lorenz')
+        noforcing.set_title('Corresponding Unforced Lorenz - Learning ' + str(total_learnings + 1))
         noforcing.set_xlabel('X')
         noforcing.set_ylabel('Y')
         noforcing.set_zlabel('Z')
 
-        #Plot the MSE for X forced lorenz
+        #Plot the MSE for X forced and Unforced lorenz
         xx = torch.linspace(1,Episodes, int(Episodes))
-        yy = LearningAveMSE
         plt.figure()
-        plt.plot(xx, yy)
-
-        #Plot the MSE for unforced lorenz
+        plt.plot(xx, LearningAveMSE, label = 'Forced', color = 'blue')
+        plt.plot(xx, LearningAveMSE_NF, label = 'Unforced', color = 'red')
+        plt.xlabel('Episode')
+        plt.ylabel('Mean Squared Error (MSE)')
+        plt.title('MSE for Learning ' + str(total_learnings + 1))
+        plt.legend()
 
         #Plot the spatial fluctuations (half-eye (density + interval) plots)
         #Forcing
@@ -453,7 +464,7 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                     showfliers=True,whiskerprops={'linewidth':2, "zorder":10},saturation=1)
         #ax = sns.pointplot(x=dx, y=dy, data=ddf,color='red')
         # Finalize the figure
-        f.suptitle('X forced Lorenz State Fluctuations', fontsize=16)
+        f.suptitle('X Forced State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
         ax.set(ylim=(20, -20))
         sns.despine(left=True)
 
@@ -489,7 +500,7 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
                     showfliers=True,whiskerprops={'linewidth':2, "zorder":10},saturation=1)
         #ax = sns.pointplot(x=dx, y=dy, data=ddf,color='red')
         # Finalize the figure
-        f.suptitle('Unforced Lorenz State Fluctuations', fontsize=16)
+        f.suptitle('Unforced Lorenz State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
         ax.set(ylim=(20, -20))
         sns.despine(left=True)
 
