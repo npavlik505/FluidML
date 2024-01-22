@@ -266,23 +266,23 @@ class DDPG(object):
 
 device = torch.device("cuda:0")
 
-#GLOBAL VARIABLES TO BE USED FOR TESTING (BEFORE PACKAGE INTEGRATION)
-#DDPG Control Attributes
-Episodes = 5
-random_steps = 500 #Ususally at 500
-max_episode_steps = 5000 #Usually at 5000
-update_freq = 5
-Learnings = 2
+# #GLOBAL VARIABLES TO BE USED FOR TESTING (BEFORE PACKAGE INTEGRATION)
+# #DDPG Control Attributes
+# Episodes = 5
+# random_steps = 500 #Ususally at 500
+# max_episode_steps = 5000 #Usually at 5000
+# update_freq = 5
+# Learnings = 2
 
-#LorenzEnv Attributes
-sigma = 10
-rho = 28
-beta = 8/3
-dt = .001
-#WHEN READY TO INTEGRATE INTO PACKAGE, ADD LorenzEnv PARAMETERS TO DDPGcontrol PARAMETERS
+# #LorenzEnv Attributes
+# sigma = 10
+# rho = 28
+# beta = 8/3
+# dt = .001
+# #WHEN READY TO INTEGRATE INTO PACKAGE, ADD LorenzEnv PARAMETERS TO DDPGcontrol PARAMETERS
 
 
-def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learnings):
+def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings):
     env = LorenzEnv(sigma, rho, beta, dt)
 
     testt1 = 0
@@ -505,4 +505,4 @@ def DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learning
 
 
 #Testing the Definition
-DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learnings)
+#DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learnings)
