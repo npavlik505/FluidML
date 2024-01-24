@@ -34,12 +34,15 @@ device = torch.device("cuda:0")
 class LorenzEnv(gym.Env):
 
     #Define the action space and observation space in the init function
-    def __init__(self, sigma, rho, beta, dt): #, render_mode=None, size=5):
+    def __init__(self, sigma, rho, beta, dt, Force_X, Force_Y, Force_Z): #, render_mode=None, size=5):
         #Parameters
         self.sigma = sigma
         self.rho = rho
         self.beta = beta
         self.dt = dt
+        self.Force_X = Force_X
+        self.Force_Y = Force_Y
+        self.Force_Z = Force_Z
         #Equilibrium Values
         #self.Ftarget = np.array([math.sqrt(self.beta*(self.rho - 1)), math.sqrt(self.beta*(self.rho - 1)), (self.rho - 1)])
         #self.Ftarget = [abs(math.sqrt(72)), abs(math.sqrt(72)), 27]
@@ -53,9 +56,20 @@ class LorenzEnv(gym.Env):
     def lorenz(self, s, a):
         #print('before lorenz step', s,a)
         s = s.to(torch.float32)
-        dF = [(self.sigma*(s[1] - s[0]))+ a,
-            (s[0]*(self.rho - s[2]) - s[1]),
-            (s[0]*s[1] - self.beta*s[2])]
+        if self.Force_X == True:
+            a_x = a
+        else:
+            a_x = 0
+        if self.Force_Y == True:
+            a_y = a 
+        else:
+            a_y = 0
+        if self.Force_Z == True:
+            a_z = a
+        else: a_z = 0  
+        dF = [(self.sigma*(s[1] - s[0])) + a_x,
+            (s[0]*(self.rho - s[2]) - s[1]) + a_y,
+            (s[0]*s[1] - self.beta*s[2]) + a_z]
         #list comprehension to multiply a float by a list
         dF = [x*self.dt for x in dF]
         dF = torch.tensor(dF)
@@ -282,8 +296,8 @@ device = torch.device("cuda:0")
 # #WHEN READY TO INTEGRATE INTO PACKAGE, ADD LorenzEnv PARAMETERS TO DDPGcontrol PARAMETERS
 
 
-def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings):
-    env = LorenzEnv(sigma, rho, beta, dt)
+def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings, Force_X, Force_Y, Force_Z):
+    env = LorenzEnv(sigma, rho, beta, dt, Force_X, Force_Y, Force_Z)
 
     testt1 = 0
     testt2 = 0

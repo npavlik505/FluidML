@@ -35,7 +35,10 @@ Episodes = 5
 random_steps = 500 #Ususally at 500
 max_episode_steps = 5000 #Usually at 5000
 update_freq = 5
-Learnings = 2
+Learnings = 1
+Force_X = False
+Force_Y = False
+Force_Z = True
 
 
 # Modelling Loop with or without masking
@@ -50,13 +53,13 @@ def LorenzModelLoop1(sigma, rho, beta, time, dt, datasets, X, Y, Z):
         SINDy.StandardSindy(CurrentFile, dt)
 
 #Testing Modelling Loop with or without masking below
-LorenzModelLoop1(sigma, rho, beta, time, dt, datasets, X, Y, Z)
+#LorenzModelLoop1(sigma, rho, beta, time, dt, datasets, X, Y, Z)
 
 
 #Control Loop w/out masking
-def LorenzControlLoop1(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings):
+def LorenzControlLoop1(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings, Force_X, Force_Y, Force_Z):
     from Control.DDPG_lorenz_control import DDPGcontrol
-    DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings)
+    DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings, Force_X, Force_Y, Force_Z)
 
 #Testing Control Loop w/out masking below
-#LorenzControlLoop1(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings)
+LorenzControlLoop1(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings, Force_X, Force_Y, Force_Z)
