@@ -1,24 +1,22 @@
-# DDPG for lorenz system
+### DDPG for lorenz system
+
+#Imports for DDPG
 import numpy as np
 import gym
 from gym import spaces
 import copy
 import math
-import matplotlib
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
-import torch.optim as optim
 import torch.nn.functional as F
-from mpl_toolkits.mplot3d import Axes3D
-
+#Imports for RainClouds plots
 import pandas as pd
 import seaborn as sns
 sns.set(style="whitegrid",font_scale=2)
-import matplotlib.collections as clt
 import ptitprince as pt
-from ptitprince import RainCloud
 
+#Add to python path
 import os
 import sys
 PROJECT_ROOT = os.path.abspath(os.path.join(
@@ -28,9 +26,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(
 sys.path.append(PROJECT_ROOT)
 
 
-
+#Lorenz63 Gym Environment
 device = torch.device("cuda:0")
-
 class LorenzEnv(gym.Env):
 
     #Define the action space and observation space in the init function
@@ -415,14 +412,21 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
         Unforced_State_Data_Storage = {}
         Unforced_State_Data_Storage['Learning_' + str(total_learnings + 1)] = UFSD
         
-        #Plot the x forced state data
+        #Plot the forced state data
+        plot_title = []
+        if Force_X == True:
+            plot_title.append('X')
+        if Force_Y == True:
+            plot_title.append('Y')
+        if Force_Z == True:
+            plot_title.append('Z')
         fig1 = plt.figure()
         forcing = fig1.add_subplot(111, projection = '3d')
-        forcing.plot(BSD[:,0], BSD[:,1], BSD[:,2], label = 'Best Forcing Policy')
-        forcing.set_title('Best x Forcing Policy - Learning ' + str(total_learnings + 1))
-        forcing.set_xlabel('X')
-        forcing.set_ylabel('Y')
-        forcing.set_zlabel('Z')
+        forcing.plot(BSD[:,0], BSD[:,1], BSD[:,2], label = ('Best' + ' '.join(plot_title) + 'Forcing Policy'))
+        forcing.set_title('Best ' + ' '.join(plot_title) + ' Forcing Policy - Learning ' + str(total_learnings + 1))
+        forcing.set_xlabel('X')#, labelpad = 10)
+        forcing.set_ylabel('Y')#, labelpad = 10)
+        forcing.set_zlabel('Z')#, labelpad = 10)
 
         #Plot the unforced state data
         fig2 = plt.figure()
@@ -433,11 +437,11 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
         noforcing.set_ylabel('Y')
         noforcing.set_zlabel('Z')
 
-        #Plot the MSE for X forced and Unforced lorenz
+        #Plot the MSE for Forced and Unforced lorenz
         xx = torch.linspace(1,Episodes, int(Episodes))
         plt.figure()
-        plt.plot(xx, LearningAveMSE, label = 'Forced', color = 'blue')
-        plt.plot(xx, LearningAveMSE_NF, label = 'Unforced', color = 'red')
+        plt.plot(xx, LearningAveMSE, label = ' '.join(plot_title) + ' Forced MSE', color = 'blue')
+        plt.plot(xx, LearningAveMSE_NF, label = 'Unforced MSE', color = 'red')
         plt.xlabel('Episode')
         plt.ylabel('Mean Squared Error (MSE)')
         plt.title('MSE for Learning ' + str(total_learnings + 1))
@@ -477,7 +481,7 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
                     showfliers=True,whiskerprops={'linewidth':2, "zorder":10},saturation=1)
         #ax = sns.pointplot(x=dx, y=dy, data=ddf,color='red')
         # Finalize the figure
-        f.suptitle('X Forced State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
+        f.suptitle( ' '.join(plot_title) + ' Forced Lorenz State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
         ax.set(ylim=(20, -20))
         sns.despine(left=True)
 
