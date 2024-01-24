@@ -14,9 +14,9 @@ Episodes = 5
 random_steps = 500 #Ususally at 500
 max_episode_steps = 5000 #Usually at 5000
 update_freq = 5
-Learnings = 1
+Learnings = 5
 Force_X = True
-Force_Y = True
+Force_Y = False
 Force_Z = False
 
 

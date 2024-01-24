@@ -150,6 +150,13 @@ class Actor(nn.Module):
         #print('self.max_action:', self.max_action)
         #print(torch.tanh(self.l3(s)))
         return a
+    
+    def initialize_Actor_weights(self):
+        for mod1 in self.modules():
+            if isinstance(mod1, nn.Linear):
+                nn.init.normal(mod1.weight)
+                if mod1.bias is not None:
+                    nn.init.constant_(mod1.bias, 0)
 
 # Critic produces single value (Q value); The state AND action is inputed, the output represents the value of taking the action-state pair
 class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
@@ -164,6 +171,13 @@ class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
         q = F.relu(self.l2(q))
         q = self.l3(q)
         return q
+    
+    def initialize_Critic_weights(self):
+        for mod2 in self.modules():
+            if isinstance(mod2, nn.Linear):
+                nn.init.normal(mod2.weight)
+                if mod2.bias is not None:
+                    nn.init.constant_(mod2.bias, 0)
 
 # Replay buffer stores 1000 state, action, reward, next state, change in weights (S,A,R,S_,dw) data sets
 class ReplayBuffer(object):
@@ -216,6 +230,7 @@ class DDPG(object):
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.lr)
 
         self.MseLoss = nn.MSELoss()
+
     # An action is chosen by feeding the state into the actor NN which outputs the action a... refreshingly simple :)
     def choose_action(self, s):
         #s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0)
@@ -319,6 +334,14 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
         #Initialize lists to store the average MSE for forcing and non-forcing cases
         LearningAveMSE = []
         LearningAveMSE_NF = []
+
+        #Code below resets network parameters between Learnings, making them independent of each other
+        if total_learnings > 0:
+            agent.actor.initialize_Actor_weights
+            agent.actor_target = copy.deepcopy(agent.actor)
+            agent.critic.initialize_Critic_weights
+            agent.critic_target = copy.deepcopy(agent.critic)
+            print('we have ran the reinit code')
 
         for Episode in range(Episodes):
             #Generate initial value for episode (note: forced ICs = Unforced ICs)
@@ -424,18 +447,18 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
         forcing = fig1.add_subplot(111, projection = '3d')
         forcing.plot(BSD[:,0], BSD[:,1], BSD[:,2], label = ('Best' + ' '.join(plot_title) + 'Forcing Policy'))
         forcing.set_title('Best ' + ' '.join(plot_title) + ' Forcing Policy - Learning ' + str(total_learnings + 1))
-        forcing.set_xlabel('X')#, labelpad = 10)
-        forcing.set_ylabel('Y')#, labelpad = 10)
-        forcing.set_zlabel('Z')#, labelpad = 10)
+        forcing.set_xlabel('X', labelpad = 10)
+        forcing.set_ylabel('Y', labelpad = 10)
+        forcing.set_zlabel('Z', labelpad = 10)
 
         #Plot the unforced state data
         fig2 = plt.figure()
         noforcing = fig2.add_subplot(111, projection = '3d')
         noforcing.plot(UFSD[:,0], UFSD[:,1], UFSD[:,2], label = 'Corresponding Unforced Lorenz')              
         noforcing.set_title('Corresponding Unforced Lorenz - Learning ' + str(total_learnings + 1))
-        noforcing.set_xlabel('X')
-        noforcing.set_ylabel('Y')
-        noforcing.set_zlabel('Z')
+        noforcing.set_xlabel('X', labelpad = 10)
+        noforcing.set_ylabel('Y', labelpad = 10)
+        noforcing.set_zlabel('Z', labelpad = 10)
 
         #Plot the MSE for Forced and Unforced lorenz
         xx = torch.linspace(1,Episodes, int(Episodes))
