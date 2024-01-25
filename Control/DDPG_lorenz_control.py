@@ -31,7 +31,7 @@ device = torch.device("cuda:0")
 class LorenzEnv(gym.Env):
 
     #Define the action space and observation space in the init function
-    def __init__(self, sigma, rho, beta, dt, Force_X, Force_Y, Force_Z): #, render_mode=None, size=5):
+    def __init__(self, sigma, rho, beta, dt, Force_X, Force_Y, Force_Z):
         #Parameters
         self.sigma = sigma
         self.rho = rho
@@ -51,7 +51,6 @@ class LorenzEnv(gym.Env):
 
     #Lorenz System Eqns - dF = np.array([dX, dY, dZ])
     def lorenz(self, s, a):
-        #print('before lorenz step', s,a)
         s = s.to(torch.float32)
         if self.Force_X == True:
             a_x = a
@@ -70,7 +69,6 @@ class LorenzEnv(gym.Env):
         #list comprehension to multiply a float by a list
         dF = [x*self.dt for x in dF]
         dF = torch.tensor(dF)
-        #print('deta lorenz values', dF)
         return dF
 
     def onlylorenz(self, s):
@@ -94,17 +92,13 @@ class LorenzEnv(gym.Env):
 
 #STEP
     def step(self, a, s):
-        #a = torch.tensor(a)
-        a = torch.clone(a) #Trying to get rid of python warnimg for using torch.tensor()
-        #s = torch.tensor(s)
-        s = torch.clone(s) #Trying to get rid of python warnimg for using torch.tensor()
+        a = torch.clone(a)
+        s = torch.clone(s)
 
         FB4Step = copy.deepcopy(s)
-        #s += torch.tensor(self.lorenz(s, a))#, device = 'cuda')
-        s += torch.clone(self.lorenz(s, a)) #Trying to get rid of python warnimg for using torch.tensor()
-        #print('state after step', s,a)
+        s += torch.clone(self.lorenz(s, a))
 
-        # Reward Paradigm 1                                               #This solved the CPU / CUDA data problems
+        # Reward Paradigm 1
         if (math.sqrt(((s[0]-self.Ftarget[0])**2)) < math.sqrt(((FB4Step[0]-self.Ftarget[0])**2))):
             reward = 1
         elif (math.sqrt(((s[0]-self.Ftarget[0])**2)) > math.sqrt(((FB4Step[0]-self.Ftarget[0])**2))):
@@ -132,9 +126,8 @@ class LorenzEnv(gym.Env):
         return observation, reward, terminated, truncated
     
 
-    #Define actor and critic NN.
+#Define actor and critic NN.
 # Actor produces single action; The state is inputed, the action is out made continuous by multiplying max acion with tanh(NN output)
-
 class Actor(nn.Module):
     def __init__(self, state_dim, action_dim, hidden_width, max_action):
         super(Actor, self).__init__()
@@ -147,10 +140,9 @@ class Actor(nn.Module):
         s = torch.tanh(self.l1(s))
         #s = torch.tanh(self.l2(s))
         a = self.max_action * torch.tanh(self.l3(s))  # [-max,max]
-        #print('self.max_action:', self.max_action)
-        #print(torch.tanh(self.l3(s)))
         return a
     
+    #Definition to reinitialize actor parameter weights between learnings
     #Param reinit Method 1 and 2
     def initialize_Actor_weights(self):
         print("actor reinit called")
@@ -174,6 +166,7 @@ class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
         q = self.l3(q)
         return q
     
+    #Definition to reinitialize critic parameter weights between learnings
     #Param reinit Method 1 and 2
     def initialize_Critic_weights(self):
         print("critic reinit called")
@@ -206,10 +199,10 @@ class ReplayBuffer(object):
     #Out of the stored data, which is on length self.size, a batch_size number of SARS_dw samples are randomly collected
     def sample(self, batch_size):
         index = np.random.choice(self.size, size=batch_size)  # Randomly sampling
-        batch_s = torch.clone(self.s[index]) #Trying to get rid of python warnimg for using torch.tensor()
-        batch_a = torch.clone(self.a[index]) #Trying to get rid of python warnimg for using torch.tensor()
-        batch_r = torch.clone(self.r[index]) #Trying to get rid of python warnimg for using torch.tensor()
-        batch_s_ = torch.clone(self.s_[index]) #Trying to get rid of python warnimg for using torch.tensor()
+        batch_s = torch.clone(self.s[index])
+        batch_a = torch.clone(self.a[index]) 
+        batch_r = torch.clone(self.r[index]) 
+        batch_s_ = torch.clone(self.s_[index]) 
 
         return batch_s, batch_a, batch_r, batch_s_
 
@@ -235,42 +228,17 @@ class DDPG(object):
 
         self.MseLoss = nn.MSELoss()
 
-    ##Param reinit Method3
-    # def initialize_Actor_weights(self):
-    #     print('actor reinit called')
-    #     for mod1 in self.actor.modules():
-    #         if isinstance(mod1, nn.Linear):
-    #             nn.init.normal(mod1.weight)
-    #             if mod1.bias is not None:
-    #                 nn.init.constant_(mod1.bias, 0)
-    ##Param reinit Method3
-    # def initialize_Critic_weights(self):
-    #     print('critic reinit called')
-    #     for mod2 in self.critic.modules():
-    #         if isinstance(mod2, nn.Linear):
-    #             nn.init.normal(mod2.weight)
-    #             if mod2.bias is not None:
-    #                 nn.init.constant_(mod2.bias, 0) 
-
-    # An action is chosen by feeding the state into the actor NN which outputs the action a... refreshingly simple :)
+    # An action is chosen by feeding the state into the actor NN which outputs the action a
     def choose_action(self, s):
-        #s = torch.unsqueeze(torch.tensor(s, dtype=torch.float), 0)
-        s = torch.unsqueeze(torch.clone(s), 0) #Trying to get rid of python warnimg for using torch.tensor()
+        s = torch.unsqueeze(torch.clone(s), 0)
         a = self.actor(s).data.numpy().flatten()
-        #a = torch.unsqueeze(torch.tensor(a, dtype=torch.float), 0)
         return a
 
     # We use our sample method, previously defined, to select the SARS_dw samples
     def learn(self, replay_buffer):
-        # print(replay_buffer.is_cuda)
-        # print(type(replay_buffer))
-        # replay_buffer.to(device)
-        # print(type(replay_buffer))
         batch_s, batch_a, batch_r, batch_s_= replay_buffer.sample(self.batch_size) # Sample a batch
 
         # Compute the target Q. This is done with no_grad so the target Q NN weights won't be adjusted every learning
-        # Not exactly sure why apparently only two args required for critic_target but three required before it was deepcopied; Maybe
-            # super() or the fact that the second argument is another method has something to do with it.
         with torch.no_grad():  # target_Q has no gradient
             Q_ = self.critic_target(batch_s_, self.actor_target(batch_s_))
             target_Q = batch_r + self.GAMMA * Q_
@@ -281,7 +249,7 @@ class DDPG(object):
         # Optimize the critic
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
-        self.critic_optimizer.step()                     #THE CRITIC IS BEING OPTIMIZED: IS THE CRITIC TARGET BEING OPTIMIZED?
+        self.critic_optimizer.step()
 
         # Freeze critic networks so you don't waste computational effort
         for params in self.critic.parameters():
@@ -311,23 +279,6 @@ class DDPG(object):
 
 
 
-device = torch.device("cuda:0")
-
-# #GLOBAL VARIABLES TO BE USED FOR TESTING (BEFORE PACKAGE INTEGRATION)
-# #DDPG Control Attributes
-# Episodes = 5
-# random_steps = 500 #Ususally at 500
-# max_episode_steps = 5000 #Usually at 5000
-# update_freq = 5
-# Learnings = 2
-
-# #LorenzEnv Attributes
-# sigma = 10
-# rho = 28
-# beta = 8/3
-# dt = .001
-# #WHEN READY TO INTEGRATE INTO PACKAGE, ADD LorenzEnv PARAMETERS TO DDPGcontrol PARAMETERS
-
 
 def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings, Force_X, Force_Y, Force_Z):
     env = LorenzEnv(sigma, rho, beta, dt, Force_X, Force_Y, Force_Z)
@@ -345,10 +296,9 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
     noise_std = 0.1 * max_action  # the std of Gaussian noise for exploration
 
 
-#Note: Eventually Program the NN to be reinitialized at the beginning of each learning
     for total_learnings in range(Learnings):
         print("This is learning ", str(total_learnings + 1))
-        #testt1 and testt2 used when validating file management for actor and critic parameters (may delete eventually)
+        #Test1 and Test2 Used is counting/iteration
         testt1 = 0
         testt2 = 0
 
@@ -357,34 +307,19 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
         LearningAveMSE_NF = []
 
         #Code below resets network parameters between Learnings, making them independent of each other
-        if total_learnings > 0:
-            
-            # #Param reinit Method1
-            # agent.actor.initialize_Actor_weights()
-            # agent.actor_target.initialize_Actor_weights()            
+        if total_learnings > 0:            
 
-            #Param reinit Method2
+            #Param reinit Method2 Actor
             agent.actor.initialize_Actor_weights()
             agent.actor_target = copy.deepcopy(agent.actor) 
 
-            # #Param reinit Method3
-            # agent.initialize_Actor_weights()
-            # agent.actor_target = copy.deepcopy(agent.actor)
-            
-            # #Param reinit Method1
-            # agent.critic.initialize_Critic_weights()
-            # agent.critic_target.initialize_Critic_weights()
-
-            #Param reinit Method2
+            #Param reinit Method2 Critic
             agent.critic.initialize_Critic_weights()
             agent.critic_target = copy.deepcopy(agent.critic) 
 
-            # #Param reinit Method3
-            # agent.initialize_Critic_weights()
-            # agent.critic_target = copy.deepcopy(agent.critic)
 
         for Episode in range(Episodes):
-            #Generate initial value for episode (note: forced ICs = Unforced ICs)
+            #Generate initial value for episode (note: forced ICs same as Unforced ICs)
             s = env.reset()
             state_data = torch.tensor(s)
  
@@ -401,7 +336,7 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
                 s_noforcing += env.onlylorenz(s_noforcing)
                 state_data_noforcing = torch.cat((state_data_noforcing, s_noforcing.view(1,3)), dim = 0)
 
-                #Randomly select, or have the NN choose, an action for the current step (i.e. forcing value on x)
+                #Randomly select, or have the NN choose, an action for the current step (i.e. forcing value on x, y, or z)
                 if episode_steps < random_steps:  # Take the random actions in the beginning for the better exploration
                     a = env.action_space.sample()
                     a = torch.from_numpy(a)
@@ -415,7 +350,7 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
                 s_, r, terminated, truncated = env.step(a, s)
                 state_data = torch.cat([state_data.view(-1,3), s_.view(1,3)])
 
-                #Calculate the average MSE for each X forced episode 
+                #Calculate the average MSE for each episode with forcing 
                 if episode_steps == 0:
                     print('Start of Episode ' + str(Episode+1))
                     EpAveMSE = (((abs(s[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
@@ -423,7 +358,7 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
                     EpAveMSE = ((EpAveMSE*(episode_steps-1)) + (abs(s[0] - env.Ftarget[0])**2+abs(s[1] - env.Ftarget[1])**2+abs(s[2] - env.Ftarget[2])**2))/episode_steps
 
 
-                #Calculate the average MSE for each unforced episode 
+                #Calculate the average MSE for each episode without forcing 
                 if episode_steps == 0:
                     EpAveMSE_NF = (((abs(s_noforcing[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
                 else:
@@ -542,7 +477,6 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
         ax=sns.boxplot(data=DDF1, color="black",orient=ort,width=.15,x=dx,y=dy,zorder=10,\
                     showcaps=True,boxprops={'facecolor':'none', "zorder":10},\
                     showfliers=True,whiskerprops={'linewidth':2, "zorder":10},saturation=1)
-        #ax = sns.pointplot(x=dx, y=dy, data=ddf,color='red')
         # Finalize the figure
         f.suptitle( ' '.join(plot_title) + ' Forced Lorenz State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
         ax.set(ylim=(20, -20))
@@ -575,7 +509,6 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
         ax=sns.boxplot(data=DDF2, color="black",orient=ort,width=.15,x=dx,y=dy,zorder=10,\
                     showcaps=True,boxprops={'facecolor':'none', "zorder":10},\
                     showfliers=True,whiskerprops={'linewidth':2, "zorder":10},saturation=1)
-        #ax = sns.pointplot(x=dx, y=dy, data=ddf,color='red')
         # Finalize the figure
         f.suptitle('Unforced Lorenz State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
         ax.set(ylim=(20, -20))
@@ -583,7 +516,3 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
 
     #Show plots only after all Learnings are Complete
     plt.show()
-
-
-#Testing the Definition
-#DDPGcontrol(Episodes, random_steps, max_episode_steps, update_freq, Learnings)
