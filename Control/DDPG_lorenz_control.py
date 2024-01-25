@@ -151,12 +151,14 @@ class Actor(nn.Module):
         #print(torch.tanh(self.l3(s)))
         return a
     
+    #Param reinit Method 1 and 2
     def initialize_Actor_weights(self):
+        print("actor reinit called")
         for mod1 in self.modules():
             if isinstance(mod1, nn.Linear):
-                nn.init.normal(mod1.weight)
+                nn.init.normal_(mod1.weight)
                 if mod1.bias is not None:
-                    nn.init.constant_(mod1.bias, 0)
+                    nn.init.constant_(mod1.bias, 0)    
 
 # Critic produces single value (Q value); The state AND action is inputed, the output represents the value of taking the action-state pair
 class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
@@ -172,10 +174,12 @@ class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
         q = self.l3(q)
         return q
     
+    #Param reinit Method 1 and 2
     def initialize_Critic_weights(self):
+        print("critic reinit called")
         for mod2 in self.modules():
             if isinstance(mod2, nn.Linear):
-                nn.init.normal(mod2.weight)
+                nn.init.normal_(mod2.weight)
                 if mod2.bias is not None:
                     nn.init.constant_(mod2.bias, 0)
 
@@ -230,6 +234,23 @@ class DDPG(object):
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.lr)
 
         self.MseLoss = nn.MSELoss()
+
+    ##Param reinit Method3
+    # def initialize_Actor_weights(self):
+    #     print('actor reinit called')
+    #     for mod1 in self.actor.modules():
+    #         if isinstance(mod1, nn.Linear):
+    #             nn.init.normal(mod1.weight)
+    #             if mod1.bias is not None:
+    #                 nn.init.constant_(mod1.bias, 0)
+    ##Param reinit Method3
+    # def initialize_Critic_weights(self):
+    #     print('critic reinit called')
+    #     for mod2 in self.critic.modules():
+    #         if isinstance(mod2, nn.Linear):
+    #             nn.init.normal(mod2.weight)
+    #             if mod2.bias is not None:
+    #                 nn.init.constant_(mod2.bias, 0) 
 
     # An action is chosen by feeding the state into the actor NN which outputs the action a... refreshingly simple :)
     def choose_action(self, s):
@@ -337,11 +358,30 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
 
         #Code below resets network parameters between Learnings, making them independent of each other
         if total_learnings > 0:
-            agent.actor.initialize_Actor_weights
-            agent.actor_target = copy.deepcopy(agent.actor)
-            agent.critic.initialize_Critic_weights
-            agent.critic_target = copy.deepcopy(agent.critic)
-            print('we have ran the reinit code')
+            
+            # #Param reinit Method1
+            # agent.actor.initialize_Actor_weights()
+            # agent.actor_target.initialize_Actor_weights()            
+
+            #Param reinit Method2
+            agent.actor.initialize_Actor_weights()
+            agent.actor_target = copy.deepcopy(agent.actor) 
+
+            # #Param reinit Method3
+            # agent.initialize_Actor_weights()
+            # agent.actor_target = copy.deepcopy(agent.actor)
+            
+            # #Param reinit Method1
+            # agent.critic.initialize_Critic_weights()
+            # agent.critic_target.initialize_Critic_weights()
+
+            #Param reinit Method2
+            agent.critic.initialize_Critic_weights()
+            agent.critic_target = copy.deepcopy(agent.critic) 
+
+            # #Param reinit Method3
+            # agent.initialize_Critic_weights()
+            # agent.critic_target = copy.deepcopy(agent.critic)
 
         for Episode in range(Episodes):
             #Generate initial value for episode (note: forced ICs = Unforced ICs)
