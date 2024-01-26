@@ -25,7 +25,6 @@ PROJECT_ROOT = os.path.abspath(os.path.join(
 )
 sys.path.append(PROJECT_ROOT)
 
-
 #Lorenz63 Gym Environment
 device = torch.device("cuda:0")
 class LorenzEnv(gym.Env):
@@ -141,16 +140,6 @@ class Actor(nn.Module):
         #s = torch.tanh(self.l2(s))
         a = self.max_action * torch.tanh(self.l3(s))  # [-max,max]
         return a
-    
-    #Definition to reinitialize actor parameter weights between learnings
-    #Param reinit Method 1 and 2
-    def initialize_Actor_weights(self):
-        print("actor reinit called")
-        for mod1 in self.modules():
-            if isinstance(mod1, nn.Linear):
-                nn.init.normal_(mod1.weight)
-                if mod1.bias is not None:
-                    nn.init.constant_(mod1.bias, 0)    
 
 # Critic produces single value (Q value); The state AND action is inputed, the output represents the value of taking the action-state pair
 class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
@@ -165,16 +154,6 @@ class Critic(nn.Module):  # According to (s,a), directly calculate Q(s,a)
         q = F.relu(self.l2(q))
         q = self.l3(q)
         return q
-    
-    #Definition to reinitialize critic parameter weights between learnings
-    #Param reinit Method 1 and 2
-    def initialize_Critic_weights(self):
-        print("critic reinit called")
-        for mod2 in self.modules():
-            if isinstance(mod2, nn.Linear):
-                nn.init.normal_(mod2.weight)
-                if mod2.bias is not None:
-                    nn.init.constant_(mod2.bias, 0)
 
 # Replay buffer stores 1000 state, action, reward, next state, change in weights (S,A,R,S_,dw) data sets
 class ReplayBuffer(object):
@@ -222,6 +201,11 @@ class DDPG(object):
 
         self.critic = Critic(state_dim, action_dim, self.hidden_width)
         self.critic_target = copy.deepcopy(self.critic)
+
+        torch.save(self.actor.state_dict(), 'InitialActorParameters.pt')
+        torch.save(self.actor_target.state_dict(), 'InitialActorTargetParameters.pt')
+        torch.save(self.critic.state_dict(), 'InitialCriticParameters.pt')
+        torch.save(self.critic_target.state_dict(), 'InitialCriticTargetParameters.pt')
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.lr)
@@ -281,6 +265,12 @@ class DDPG(object):
 
 
 def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings, Force_X, Force_Y, Force_Z):
+    #Set Seed
+    torch.manual_seed(1)
+    torch.cuda.manual_seed_all(1)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
     env = LorenzEnv(sigma, rho, beta, dt, Force_X, Force_Y, Force_Z)
 
     testt1 = 0
@@ -306,17 +296,26 @@ def DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps,
         LearningAveMSE = []
         LearningAveMSE_NF = []
 
-        #Code below resets network parameters between Learnings, making them independent of each other
-        if total_learnings > 0:            
-
-            #Param reinit Method2 Actor
-            agent.actor.initialize_Actor_weights()
-            agent.actor_target = copy.deepcopy(agent.actor) 
-
-            #Param reinit Method2 Critic
-            agent.critic.initialize_Critic_weights()
-            agent.critic_target = copy.deepcopy(agent.critic) 
-
+        #Code below resets network parameters to original set between Learnings, making learnings independent of each other but helping to eliminate random interLearning variation
+        if total_learnings > 0:
+            # #Place before and after desired network below to print weights before and after reinitialization            
+            # print("Learning's Actor params before init")
+            # for mod1 in agent.actor.modules():
+            #     if isinstance(mod1, nn.Linear):
+            #         print(mod1.weight)
+            # print("Learning's Actor params after init")
+            # for mod2 in agent.actor.modules():
+            #     if isinstance(mod2, nn.Linear):
+            #         print(mod2.weight)
+            
+            OriginalActorParams = torch.load('InitialActorParameters.pt')
+            agent.actor.load_state_dict(OriginalActorParams)
+            OriginalActorTargetParams = torch.load('InitialActorTargetParameters.pt')
+            agent.actor_target.load_state_dict(OriginalActorTargetParams) 
+            OriginalCriticParams = torch.load('InitialCriticParameters.pt')
+            agent.critic.load_state_dict(OriginalCriticParams)
+            OriginalCriticTargetParams = torch.load('InitialCriticTargetParameters.pt')
+            agent.critic_target.load_state_dict(OriginalCriticTargetParams)        
 
         for Episode in range(Episodes):
             #Generate initial value for episode (note: forced ICs same as Unforced ICs)
