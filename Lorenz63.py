@@ -10,11 +10,11 @@ time = 20
 dt = .001
 datasets = 1
 
-Episodes = 5
+Episodes = 2
 random_steps = 500 #Ususally at 500
 max_episode_steps = 5000 #Usually at 5000
 update_freq = 5
-Learnings = 5
+Learnings = 3 #Was at 5
 Force_X = True
 Force_Y = False
 Force_Z = False
