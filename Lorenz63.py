@@ -10,21 +10,22 @@ time = 20
 dt = .001
 datasets = 1
 
-Episodes = 2
+Episodes = 50
 random_steps = 500 #Ususally at 500
 max_episode_steps = 5000 #Usually at 5000
 update_freq = 5
-Learnings = 3 #Was at 5
-Force_X = True
+Learnings = 2 #Was at 5
+Force_X = False
 Force_Y = False
 Force_Z = False
 
+from Source.LorenzEnvironment import LorenzEnv
+env = LorenzEnv(sigma, rho, beta, dt, X, Y, Z, Force_X, Force_Y, Force_Z)
 
 # Modelling Loop with or without masking
-def LorenzModelLoop(sigma, rho, beta, time, dt, datasets, X, Y, Z):
-    from Source.TimeSeriesData import LorenzDataGenerator
-    data = LorenzDataGenerator(sigma, rho, beta, time, dt, datasets, X, Y, Z)
-    data.GenerateData() #Produces datasets with same name scheme as "CurrentFile" below
+def LorenzModelLoop(env, time, dt, datasets):
+    from FeatureSelection.LorenzFeatureSelection import GenerateData
+    GenerateData(env, time, dt, datasets) #Produces datasets with same name scheme as "CurrentFile" below
     from Model import SINDy
     for i in range(datasets):
         CurrentFile = 'LorenzDataSet_20s_Set' + str(i+1) + '.h5py'
@@ -32,7 +33,7 @@ def LorenzModelLoop(sigma, rho, beta, time, dt, datasets, X, Y, Z):
         SINDy.StandardSindy(CurrentFile, dt)
 
 #Testing Modelling Loop with or without masking below
-#LorenzModelLoop(sigma, rho, beta, time, dt, datasets, X, Y, Z)
+LorenzModelLoop(env, time, dt, datasets)
 
 
 #Control Loop with or without masking
@@ -41,4 +42,4 @@ def LorenzControlLoop(sigma, rho, beta, dt, Episodes, random_steps, max_episode_
     DDPGcontrol(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings, Force_X, Force_Y, Force_Z)
 
 #Testing Control Loop w/out masking below
-LorenzControlLoop(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings, Force_X, Force_Y, Force_Z)
+# LorenzControlLoop(sigma, rho, beta, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings, Force_X, Force_Y, Force_Z)

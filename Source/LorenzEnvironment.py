@@ -1,58 +1,57 @@
+#Imports for DDPG
 import numpy as np
 import gym
 from gym import spaces
 import copy
 import math
-import matplotlib
-import matplotlib.pyplot as plt
 import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-#from scipy.integrate import solve_ivp
 
-import os
-import sys
-PROJECT_ROOT = os.path.abspath(os.path.join(
-    os.path.dirname(__file__),
-    os.pardir)
-)
-sys.path.append(PROJECT_ROOT)
 
 device = torch.device("cuda:0")
-
 class LorenzEnv(gym.Env):
-    #metadata = {'render.modes': ['human']}
 
     #Define the action space and observation space in the init function
-    def __init__(self, sigma, rho, beta, dt): #, render_mode=None, size=5):
+    def __init__(self, sigma, rho, beta, dt, X, Y, Z, Force_X, Force_Y, Force_Z):
         #Parameters
         self.sigma = sigma
         self.rho = rho
         self.beta = beta
         self.dt = dt
+        self.X = X
+        self.Y = Y
+        self.Z = Z
+        self.Force_X = Force_X
+        self.Force_Y = Force_Y
+        self.Force_Z = Force_Z
         #Equilibrium Values
         #self.Ftarget = np.array([math.sqrt(self.beta*(self.rho - 1)), math.sqrt(self.beta*(self.rho - 1)), (self.rho - 1)])
         #self.Ftarget = [abs(math.sqrt(72)), abs(math.sqrt(72)), 27]
         self.Ftarget = [-8.42, -8.42, 27]
         #Observation Space
         self.observation_space = spaces.Box(low = np.array([-20, -15, 0]), high = np.array([20, 15, 45]), shape = (3,), dtype = np.float32) #No downstream numpy
-        #NUMPY can't convert yet
         #Action Space
         self.action_space = spaces.Box(low = -50, high = 50, shape = (1,), dtype = np.float32) #No downstream numpy
-        #NUMPY can't convert yet
 
     #Lorenz System Eqns - dF = np.array([dX, dY, dZ])
     def lorenz(self, s, a):
-        #print('before lorenz step', s,a)
         s = s.to(torch.float32)
-        dF = [(self.sigma*(s[1] - s[0]))+ a,
-            (s[0]*(self.rho - s[2]) - s[1]),
-            (s[0]*s[1] - self.beta*s[2])]
+        if self.Force_X == True:
+            a_x = a
+        else:
+            a_x = 0
+        if self.Force_Y == True:
+            a_y = a 
+        else:
+            a_y = 0
+        if self.Force_Z == True:
+            a_z = a
+        else: a_z = 0  
+        dF = [(self.sigma*(s[1] - s[0])) + a_x,
+            (s[0]*(self.rho - s[2]) - s[1]) + a_y,
+            (s[0]*s[1] - self.beta*s[2]) + a_z]
         #list comprehension to multiply a float by a list
         dF = [x*self.dt for x in dF]
         dF = torch.tensor(dF)
-        #print('deta lorenz values', dF)
         return dF
 
     def onlylorenz(self, s):
@@ -76,13 +75,13 @@ class LorenzEnv(gym.Env):
 
 #STEP
     def step(self, a, s):
-        a = torch.tensor(a)
-        s = torch.tensor(s)
-        FB4Step = copy.deepcopy(s)
-        s += torch.tensor(self.lorenz(s, a))#, device = 'cuda')
-        #print('state after step', s,a)
+        a = torch.clone(a)
+        s = torch.clone(s)
 
-        # Reward Paradigm 1                                               #This solved the CPU / CUDA data problems
+        FB4Step = copy.deepcopy(s)
+        s += torch.clone(self.lorenz(s, a))
+
+        # Reward Paradigm 1
         if (math.sqrt(((s[0]-self.Ftarget[0])**2)) < math.sqrt(((FB4Step[0]-self.Ftarget[0])**2))):
             reward = 1
         elif (math.sqrt(((s[0]-self.Ftarget[0])**2)) > math.sqrt(((FB4Step[0]-self.Ftarget[0])**2))):
