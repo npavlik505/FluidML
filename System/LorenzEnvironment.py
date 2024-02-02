@@ -22,13 +22,14 @@ device = torch.device("cuda:0")
 class LorenzEnv(gym.Env):
 
     #Define the action space and observation space in the init function
-    def __init__(self, sigma, rho, beta, dt, X, Y, Z, Force_X, Force_Y, Force_Z):
+    def __init__(self, sigma, rho, beta, time, dt, X, Y, Z, Force_X, Force_Y, Force_Z):
         #EnvironmentName
         self.SystemName = 'Lorenz'
         #Parameters
         self.sigma = sigma
         self.rho = rho
         self.beta = beta
+        self.time = time
         self.dt = dt
         self.X = X
         self.Y = Y
