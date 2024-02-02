@@ -20,7 +20,7 @@ sns.set(style="whitegrid",font_scale=2)
 import ptitprince as pt
 
 
-def DDPGcontrol(env, dt, Episodes, random_steps, max_episode_steps, update_freq, Learnings):
+def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings):
     from ControlMethod import DDPG
 
     testt1 = 0
@@ -81,7 +81,7 @@ def DDPGcontrol(env, dt, Episodes, random_steps, max_episode_steps, update_freq,
             for episode_steps in range(max_episode_steps):
 
                 #Generate the unforced lorenz values
-                s_noforcing += env.onlylorenz(s_noforcing)
+                s_noforcing += env.UnforcedSystem(s_noforcing)
                 state_data_noforcing = torch.cat((state_data_noforcing, s_noforcing.view(1,3)), dim = 0)
 
                 #Randomly select, or have the NN choose, an action for the current step (i.e. forcing value on x, y, or z)
@@ -169,7 +169,7 @@ def DDPGcontrol(env, dt, Episodes, random_steps, max_episode_steps, update_freq,
         fig1 = plt.figure()
         forcing = fig1.add_subplot(111, projection = '3d')
         forcing.plot(BSD[:,0], BSD[:,1], BSD[:,2], label = ('Best' + ' '.join(plot_title) + 'Forcing Policy'))
-        forcing.set_title('Best ' + ' '.join(plot_title) + ' Forcing Policy - Learning ' + str(total_learnings + 1))
+        forcing.set_title(env.SystemName + ': Best ' + ' '.join(plot_title) + ' Forcing Policy - Learning ' + str(total_learnings + 1))
         forcing.set_xlabel('X', labelpad = 10)
         forcing.set_ylabel('Y', labelpad = 10)
         forcing.set_zlabel('Z', labelpad = 10)
@@ -178,7 +178,7 @@ def DDPGcontrol(env, dt, Episodes, random_steps, max_episode_steps, update_freq,
         fig2 = plt.figure()
         noforcing = fig2.add_subplot(111, projection = '3d')
         noforcing.plot(UFSD[:,0], UFSD[:,1], UFSD[:,2], label = 'Corresponding Unforced Lorenz')              
-        noforcing.set_title('Corresponding Unforced Lorenz - Learning ' + str(total_learnings + 1))
+        noforcing.set_title(env.SystemName + ': Corresponding Unforced Dynamics - Learning ' + str(total_learnings + 1))
         noforcing.set_xlabel('X', labelpad = 10)
         noforcing.set_ylabel('Y', labelpad = 10)
         noforcing.set_zlabel('Z', labelpad = 10)
@@ -190,7 +190,7 @@ def DDPGcontrol(env, dt, Episodes, random_steps, max_episode_steps, update_freq,
         plt.plot(xx, LearningAveMSE_NF, label = 'Unforced MSE', color = 'red')
         plt.xlabel('Episode')
         plt.ylabel('Mean Squared Error (MSE)')
-        plt.title('MSE for Learning ' + str(total_learnings + 1))
+        plt.title(env.SystemName + ': MSE for Learning ' + str(total_learnings + 1))
         plt.legend()
 
         #Plot the spatial fluctuations (half-eye (density + interval) plots)
@@ -226,7 +226,7 @@ def DDPGcontrol(env, dt, Episodes, random_steps, max_episode_steps, update_freq,
                     showcaps=True,boxprops={'facecolor':'none', "zorder":10},\
                     showfliers=True,whiskerprops={'linewidth':2, "zorder":10},saturation=1)
         # Finalize the figure
-        f.suptitle( ' '.join(plot_title) + ' Forced Lorenz State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
+        f.suptitle( env.SystemName + ': ' + ' '.join(plot_title) + ' Forced State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
         ax.set(ylim=(20, -20))
         sns.despine(left=True)
 
@@ -258,7 +258,7 @@ def DDPGcontrol(env, dt, Episodes, random_steps, max_episode_steps, update_freq,
                     showcaps=True,boxprops={'facecolor':'none', "zorder":10},\
                     showfliers=True,whiskerprops={'linewidth':2, "zorder":10},saturation=1)
         # Finalize the figure
-        f.suptitle('Unforced Lorenz State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
+        f.suptitle(env.SystemName + ': Unforced State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
         ax.set(ylim=(20, -20))
         sns.despine(left=True)
 

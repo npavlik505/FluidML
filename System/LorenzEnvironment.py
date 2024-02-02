@@ -23,6 +23,8 @@ class LorenzEnv(gym.Env):
 
     #Define the action space and observation space in the init function
     def __init__(self, sigma, rho, beta, dt, X, Y, Z, Force_X, Force_Y, Force_Z):
+        #EnvironmentName
+        self.SystemName = 'Lorenz'
         #Parameters
         self.sigma = sigma
         self.rho = rho
@@ -44,7 +46,7 @@ class LorenzEnv(gym.Env):
         self.action_space = spaces.Box(low = -50, high = 50, shape = (1,), dtype = np.float32) #No downstream numpy
 
     #Lorenz System Eqns - dF = np.array([dX, dY, dZ])
-    def lorenz(self, s, a):
+    def ForcedSystem(self, s, a):
         s = s.to(torch.float32)
         if self.Force_X == True:
             a_x = a
@@ -65,7 +67,7 @@ class LorenzEnv(gym.Env):
         dF = torch.tensor(dF)
         return dF
 
-    def onlylorenz(self, s):
+    def UnforcedSystem(self, s):
         s = s.to(torch.float32)
         dFL = [(self.sigma*(s[1] - s[0])),
             (s[0]*(self.rho - s[2]) - s[1]),
@@ -90,7 +92,7 @@ class LorenzEnv(gym.Env):
         s = torch.clone(s)
 
         FB4Step = copy.deepcopy(s)
-        s += torch.clone(self.lorenz(s, a))
+        s += torch.clone(self.ForcedSystem(s, a))
 
         # Reward Paradigm 1
         if (math.sqrt(((s[0]-self.Ftarget[0])**2)) < math.sqrt(((FB4Step[0]-self.Ftarget[0])**2))):

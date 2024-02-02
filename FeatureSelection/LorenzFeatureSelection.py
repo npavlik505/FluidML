@@ -13,26 +13,26 @@ import h5py
 
 
 # Selects the chosen variables (X, Y, or Z) and stores them in an hdf5 file
-def GenerateData(env, time, dt, datasets):
+def SelectFeatures(env, time, datasets):
     for i in range(datasets):
-        file = h5py.File('LorenzDataSet_20s_Set' + str(i+1) + '.h5py', 'w')
+        file = h5py.File('DataSet' + str(i+1) + '.h5py', 'w')
         s = env.reset()
         DataSetX = []
         DataSetY = []
         DataSetZ = []
-        for x in range(int(time/dt)):
+        for x in range(int(time/env.dt)):
             DataSetX.append(s[0].item())
             DataSetY.append(s[1].item())
             DataSetZ.append(s[2].item())          
-            s += env.onlylorenz(s)
-            if x == ((time/dt)-1):
+            s += env.UnforcedSystem(s)
+            if x == ((time/env.dt)-1):
                 if env.X == True:
                     file.create_dataset("X", data = DataSetX)
                 if env.Y == True:
                     file.create_dataset("Y", data = DataSetY)
                 if env.Z == True:
                     file.create_dataset("Z", data = DataSetZ)
-                print('LorenzDataSet_' + str(time) + 's_Set' + str(i+1) + '_complete')
+                print(env.SystemName + 'DataSet' + str(i+1) +'_'+ str(time) + 's')
                 file.close()
 
 
