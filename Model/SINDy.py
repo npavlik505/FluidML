@@ -1,7 +1,6 @@
-import h5py
-import numpy as np
-import pysindy as ps
+## APPLICATION OF SINDy METHOD FOR MODELLING SYSTEM DYNAMICS
 
+#Add to python path
 import os
 import sys
 PROJECT_ROOT = os.path.abspath(os.path.join(
@@ -10,6 +9,9 @@ PROJECT_ROOT = os.path.abspath(os.path.join(
 )
 sys.path.append(PROJECT_ROOT)
 
+import h5py
+import numpy as np
+import pysindy as ps
 
 def StandardSindy(CurrentFile, dt):
     DataSet = h5py.File(CurrentFile, 'r')
