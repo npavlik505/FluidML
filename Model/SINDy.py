@@ -27,3 +27,6 @@ def StandardSindy(CurrentFile, dt):
     model = ps.SINDy(feature_names = feature_names, optimizer = opt)
     model.fit(Data, t = dt) #Data is the training data and the timestep btwn data points must be specified
     model.print()
+
+#REFERENCED FOR CREATING SINDy.py FILE
+#https://www.youtube.com/watch?v=SfIJiuJ38W0

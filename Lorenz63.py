@@ -10,11 +10,11 @@ time = 20
 dt = .001
 datasets = 1
 
-Episodes = 5
+Episodes = 10
 random_steps = 500 #Ususally at 500
 max_episode_steps = 5000 #Usually at 5000
 update_freq = 5
-Learnings = 1 #Was at 5
+Learnings = 2 #Was at 5
 Force_X = True
 Force_Y = False
 Force_Z = False
@@ -32,8 +32,8 @@ def ModelLoop(env, datasets):
         print('Model for dataset ' + str(i+1) )
         SINDy.StandardSindy(CurrentFile, env.dt)
 
-#Testing Modelling Loop with or without masking below
-ModelLoop(env, datasets)
+# #Testing Modelling Loop with or without masking below
+# ModelLoop(env, datasets)
 
 
 #Control Loop with or without masking
