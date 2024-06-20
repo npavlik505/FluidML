@@ -14,7 +14,7 @@ Episodes = 10
 random_steps = 500 #Ususally at 500
 max_episode_steps = 5000 #Usually at 5000
 update_freq = 5
-Learnings = 2 #Was at 5
+Learnings = 3 #Was at 5
 Force_X = True
 Force_Y = False
 Force_Z = False
@@ -24,7 +24,7 @@ env = LorenzEnv(sigma, rho, beta, time, dt, X, Y, Z, Force_X, Force_Y, Force_Z)
 
 # Modelling Loop with or without masking
 def ModelLoop(env, datasets):
-    from FeatureSelection.LorenzFeatureSelection import SelectFeatures
+    from Feature_Selection.LorenzFeatureSelection import SelectFeatures
     SelectFeatures(env, datasets) #Produces datasets with same name scheme as "CurrentFile" below
     from Model import SINDy
     for i in range(datasets):
@@ -38,8 +38,8 @@ def ModelLoop(env, datasets):
 
 #Control Loop with or without masking
 def ControlLoop(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings):
-    from Control.DDPG_control import DDPGcontrol
+    from Control_Implementation.DDPG_control import DDPGcontrol
     DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings)
 
-# #Testing Control Loop w/out masking below
-# ControlLoop(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings)
+#Testing Control Loop w/out masking below
+ControlLoop(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings)

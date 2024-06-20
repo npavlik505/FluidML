@@ -15,7 +15,7 @@ import copy
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+import time
 
 #Define actor and critic NN.
 # Actor produces single action; The state is inputed, the action is out made continuous by multiplying max acion with tanh(NN output)
@@ -94,15 +94,24 @@ class ddpg(object):
         self.critic = Critic(state_dim, action_dim, self.hidden_width)
         self.critic_target = copy.deepcopy(self.critic)
 
-        torch.save(self.actor.state_dict(), 'InitialActorParameters.pt')
-        torch.save(self.actor_target.state_dict(), 'InitialActorTargetParameters.pt')
-        torch.save(self.critic.state_dict(), 'InitialCriticParameters.pt')
-        torch.save(self.critic_target.state_dict(), 'InitialCriticTargetParameters.pt')
+        self.run_timestamp = time.strftime("%Y%m%d-%H%M%S")
+        self.run_name = self.run_timestamp
+
+        self.initialize_networks()
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.lr)
 
         self.MseLoss = nn.MSELoss()
+    def initialize_networks(self):
+        save_dir = f"{self.run_name}/Initial_Parameters"
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
+
+        torch.save(self.actor.state_dict(), os.path.join(save_dir, 'InitialActorParameters.pt'))
+        torch.save(self.actor_target.state_dict(), os.path.join(save_dir, 'InitialActorTargetParameters.pt'))
+        torch.save(self.critic.state_dict(), os.path.join(save_dir, 'InitialCriticParameters.pt'))
+        torch.save(self.critic_target.state_dict(), os.path.join(save_dir, 'InitialCriticTargetParameters.pt'))        
 
     # An action is chosen by feeding the state into the actor NN which outputs the action a
     def choose_action(self, s):

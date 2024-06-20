@@ -21,10 +21,7 @@ import ptitprince as pt
 
 
 def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings):
-    from ControlMethod import DDPG
-
-    testt1 = 0
-    testt2 = 0
+    from Control_Method import DDPG
 
     state_dim = env.observation_space.shape[0] #Dimension of the state space (in this case three continous values for x, y, and z of the Lorenz System)
     action_dim = env.action_space.shape[0] #Dimension of the action space (in this case continuous values between 0 and 50)
@@ -38,9 +35,6 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
 
     for total_learnings in range(Learnings):
         print("This is learning ", str(total_learnings + 1))
-        #Test1 and Test2 Used is counting/iteration
-        testt1 = 0
-        testt2 = 0
 
         #Initialize lists to store the average MSE for forcing and non-forcing cases
         LearningAveMSE = []
@@ -56,14 +50,15 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
             # print("Learning's Actor params after init")
             # for mod2 in agent.actor.modules():
             #     if isinstance(mod2, nn.Linear):
-            #         print(mod2.weight)           
-            OriginalActorParams = torch.load('InitialActorParameters.pt')
+            #         print(mod2.weight)
+
+            OriginalActorParams = torch.load(f'{agent.run_name}/Initial_Parameters/InitialActorParameters.pt')
             agent.actor.load_state_dict(OriginalActorParams)
-            OriginalActorTargetParams = torch.load('InitialActorTargetParameters.pt')
+            OriginalActorTargetParams = torch.load(f'{agent.run_name}/Initial_Parameters/InitialActorTargetParameters.pt')
             agent.actor_target.load_state_dict(OriginalActorTargetParams)
-            OriginalCriticParams = torch.load('InitialCriticParameters.pt')
+            OriginalCriticParams = torch.load(f'{agent.run_name}/Initial_Parameters/InitialCriticParameters.pt')
             agent.critic.load_state_dict(OriginalCriticParams)    
-            OriginalCriticTargetParams = torch.load('InitialCriticTargetParameters.pt')
+            OriginalCriticTargetParams = torch.load(f'{agent.run_name}/Initial_Parameters/InitialCriticTargetParameters.pt')
             agent.critic_target.load_state_dict(OriginalCriticTargetParams)      
 
         for Episode in range(Episodes):
@@ -123,20 +118,24 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
                         UFSD = np.array(state_data_noforcing)
 
                         #Create path to parameter file
-                        Control = os.path.dirname(os.path.abspath(__file__))
-                        FluidML = os.path.abspath(os.path.join(Control, '..'))
-                        myfilepath1 = os.path.join(FluidML, 'BestParamsActor_Learning' + str(total_learnings+1) + '.pt')
-                        myfilepath2 = os.path.join(FluidML, 'BestParamsCritic_Learning' + str(total_learnings+1) + '.pt')
-                        #Delete parameter file for previous best performing policy
-                        if os.path.exists(myfilepath1):
-                            os.remove(myfilepath1)
-                            testt1 += 1
-                        if os.path.exists(myfilepath2):
-                            os.remove(myfilepath2)
-                            testt2 += 1
-                        #Create parameter file for new best performing policy
-                        torch.save(agent.actor.state_dict(), 'BestParamsActor_Learning' + str(total_learnings+1) + '.pt')
-                        torch.save(agent.critic.state_dict(), 'BestParamsCritic_Learning' + str(total_learnings+1) + '.pt')
+                        Control_Imp = os.path.dirname(os.path.abspath(__file__))
+                        FluidML = os.path.abspath(os.path.join(Control_Imp, '..'))
+                        best_params_dir = os.path.join(FluidML, agent.run_name)
+                        best_params_dir = os.path.join(best_params_dir, f'BestParams_Learning{total_learnings+1}')
+
+                        if not os.path.exists(best_params_dir):
+                            os.makedirs(best_params_dir)
+
+                        for file_name in os.listdir(best_params_dir):
+                            file_path = os.path.join(best_params_dir, file_name)
+                            if os.path.isfile(file_path):
+                                os.remove(file_path)
+
+                        myfilepath1 = os.path.join(best_params_dir, f'BestParamsActor_Learning{total_learnings+1}.pt')
+                        myfilepath2 = os.path.join(best_params_dir, f'BestParamsCritic_Learning{total_learnings+1}.pt')
+                        
+                        torch.save(agent.actor.state_dict(), myfilepath1)
+                        torch.save(agent.critic.state_dict(), myfilepath2)
 
                     #Print the average Mean Squared Error for the Episode
                     print('Episode Ave MSE:', EpAveMSE)
@@ -158,6 +157,10 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
         Unforced_State_Data_Storage = {}
         Unforced_State_Data_Storage['Learning_' + str(total_learnings + 1)] = UFSD
         
+        plot_storage = os.path.join(FluidML, agent.run_name)
+        plot_storage = os.path.join(plot_storage, f'Learning{total_learnings+1}_Plots')
+        os.makedirs(plot_storage)
+
         #Plot the forced state data
         plot_title = []
         if env.Force_X == True:
@@ -173,6 +176,9 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
         forcing.set_xlabel('X', labelpad = 10)
         forcing.set_ylabel('Y', labelpad = 10)
         forcing.set_zlabel('Z', labelpad = 10)
+        Forced_State_Data = 'Forced_Learning_' + str(total_learnings+1) + '.png'
+        State_plot_path1 = os.path.join(plot_storage, Forced_State_Data)
+        plt.savefig(State_plot_path1)
 
         #Plot the unforced state data
         fig2 = plt.figure()
@@ -182,6 +188,9 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
         noforcing.set_xlabel('X', labelpad = 10)
         noforcing.set_ylabel('Y', labelpad = 10)
         noforcing.set_zlabel('Z', labelpad = 10)
+        Unforced_State_Data = 'Unforced_Learning_' + str(total_learnings+1) + '.png'
+        State_plot_path2 = os.path.join(plot_storage, Unforced_State_Data)
+        plt.savefig(State_plot_path2)
 
         #Plot the MSE for Forced and Unforced lorenz
         xx = torch.linspace(1,Episodes, int(Episodes))
@@ -192,6 +201,9 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
         plt.ylabel('Mean Squared Error (MSE)')
         plt.title(env.SystemName + ': MSE for Learning ' + str(total_learnings + 1))
         plt.legend()
+        MSE_plot = 'MSE_Learning_' + str(total_learnings+1) + '.png'
+        MSE_plot_path = os.path.join(plot_storage, MSE_plot)
+        plt.savefig(MSE_plot_path)
 
         #Plot the spatial fluctuations (half-eye (density + interval) plots)
         #Forcing
@@ -229,7 +241,9 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
         f.suptitle( env.SystemName + ': ' + ' '.join(plot_title) + ' Forced State Fluctuations - Learning ' + str(total_learnings + 1), fontsize=16)
         ax.set(ylim=(20, -20))
         sns.despine(left=True)
-
+        Forced_variance = 'Forced_Variance_Learning_' + str(total_learnings+1) + '.png'
+        Variance_plot_path1 = os.path.join(plot_storage, Forced_variance)
+        plt.savefig(Variance_plot_path1)
 
 
         #No Forcing      
@@ -262,8 +276,10 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
         ax.set(ylim=(20, -20))
         sns.despine(left=True)
 
-    #Show plots only after all Learnings are Complete
-    plt.show()
+        Unforced_variance = 'Unforced_Variance_Learning_' + str(total_learnings+1) + '.png'
+        Variance_plot_path2 = os.path.join(plot_storage, Unforced_variance)
+        plt.savefig(Variance_plot_path2)
+
 
 # REFERENCED FOR RAINCLOUD PLOTS:
 # https://github.com/RainCloudPlots/RainCloudPlots
