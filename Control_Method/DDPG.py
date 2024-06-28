@@ -16,6 +16,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import time
+import inspect
 
 #Define actor and critic NN.
 # Actor produces single action; The state is inputed, the action is out made continuous by multiplying max acion with tanh(NN output)
@@ -94,15 +95,18 @@ class ddpg(object):
         self.critic = Critic(state_dim, action_dim, self.hidden_width)
         self.critic_target = copy.deepcopy(self.critic)
 
-        self.run_timestamp = time.strftime("%Y%m%d-%H%M%S")
+        self.run_timestamp = time.strftime("%Y%m%d.%H%M%S")
         self.run_name = self.run_timestamp
 
-        self.initialize_networks()
+        #This call saves the initial network params (for verification) unless called from the Analysis folder
+        if not self.is_called_from_analysis_folder():
+            self.initialize_networks()
 
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=self.lr)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=self.lr)
 
         self.MseLoss = nn.MSELoss()
+
     def initialize_networks(self):
         save_dir = f"{self.run_name}/Initial_Parameters"
         if not os.path.exists(save_dir):
@@ -112,6 +116,13 @@ class ddpg(object):
         torch.save(self.actor_target.state_dict(), os.path.join(save_dir, 'InitialActorTargetParameters.pt'))
         torch.save(self.critic.state_dict(), os.path.join(save_dir, 'InitialCriticParameters.pt'))
         torch.save(self.critic_target.state_dict(), os.path.join(save_dir, 'InitialCriticTargetParameters.pt'))        
+
+    def is_called_from_analysis_folder(self):
+        frame = inspect.currentframe().f_back.f_back
+        module = inspect.getmodule(frame)
+        if module and module.__file__:
+            return 'Analysis' in module.__file__
+        return False
 
     # An action is chosen by feeding the state into the actor NN which outputs the action a
     def choose_action(self, s):

@@ -22,7 +22,7 @@ device = torch.device("cuda:0")
 class LorenzEnv(gym.Env):
 
     #Define the action space and observation space in the init function
-    def __init__(self, sigma, rho, beta, time, dt, X, Y, Z, Force_X, Force_Y, Force_Z):
+    def __init__(self, sigma, rho, beta, time, dt, X, Y, Z, Force_X, Force_Y, Force_Z, Max_Force):
         #EnvironmentName
         self.SystemName = 'Lorenz'
         #Parameters
@@ -37,6 +37,7 @@ class LorenzEnv(gym.Env):
         self.Force_X = Force_X
         self.Force_Y = Force_Y
         self.Force_Z = Force_Z
+        self.Max_Force = Max_Force
         #Equilibrium Values
         #self.Ftarget = np.array([math.sqrt(self.beta*(self.rho - 1)), math.sqrt(self.beta*(self.rho - 1)), (self.rho - 1)])
         #self.Ftarget = [abs(math.sqrt(72)), abs(math.sqrt(72)), 27]
@@ -44,7 +45,7 @@ class LorenzEnv(gym.Env):
         #Observation Space
         self.observation_space = spaces.Box(low = np.array([-20, -15, 0]), high = np.array([20, 15, 45]), shape = (3,), dtype = np.float32) #No downstream numpy
         #Action Space
-        self.action_space = spaces.Box(low = -50, high = 50, shape = (1,), dtype = np.float32) #No downstream numpy
+        self.action_space = spaces.Box(low = -self.Max_Force, high = self.Max_Force, shape = (1,), dtype = np.float32) #No downstream numpy
 
     #Lorenz System Eqns - dF = np.array([dX, dY, dZ])
     def ForcedSystem(self, s, a):

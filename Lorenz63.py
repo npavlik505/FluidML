@@ -6,21 +6,24 @@ X = True
 Y = True
 Z = True
 
-time = 20
+time = 10
 dt = .001
 datasets = 1
 
-Episodes = 10
+Episodes = 40
 random_steps = 500 #Ususally at 500
 max_episode_steps = 5000 #Usually at 5000
 update_freq = 5
-Learnings = 3 #Was at 5
+Learnings = 2 #Was at 5
 Force_X = True
 Force_Y = False
 Force_Z = False
+Max_Force = 50
+
+run = '20240628.133325'
 
 from System.LorenzEnvironment import LorenzEnv
-env = LorenzEnv(sigma, rho, beta, time, dt, X, Y, Z, Force_X, Force_Y, Force_Z)
+env = LorenzEnv(sigma, rho, beta, time, dt, X, Y, Z, Force_X, Force_Y, Force_Z, Max_Force)
 
 # Modelling Loop with or without masking
 def ModelLoop(env, datasets):
@@ -36,10 +39,24 @@ def ModelLoop(env, datasets):
 # ModelLoop(env, datasets)
 
 
+
 #Control Loop with or without masking
 def ControlLoop(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings):
     from Control_Implementation.DDPG_control import DDPGcontrol
     DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings)
 
-#Testing Control Loop w/out masking below
-ControlLoop(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings)
+# #Testing Control Loop w/out masking below
+# ControlLoop(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings)
+
+# #Testing Control Loop w/out masking below
+# for forcing_sweep in range(5,51,5):
+#     Max_Force = forcing_sweep
+#     from System.LorenzEnvironment import LorenzEnv
+#     env = LorenzEnv(sigma, rho, beta, time, dt, X, Y, Z, Force_X, Force_Y, Force_Z, Max_Force)
+#     ControlLoop(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings)
+
+
+
+#Testing Analysis
+from Analysis.LorenzAnalysis import Analysis
+Analysis(env, max_episode_steps, run) 

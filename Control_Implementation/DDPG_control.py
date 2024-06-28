@@ -18,6 +18,7 @@ import pandas as pd
 import seaborn as sns
 sns.set(style="whitegrid",font_scale=2)
 import ptitprince as pt
+import torch.nn as nn
 
 
 def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Learnings):
@@ -88,24 +89,18 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
                     a = agent.choose_action(s)
                     a = (a + np.random.normal(0, noise_std, size=action_dim)).clip(-max_action, max_action)
                     a = torch.from_numpy(a)
-                
 
                 s_, r, terminated, truncated = env.step(a, s)
                 state_data = torch.cat([state_data.view(-1,3), s_.view(1,3)])
 
-                #Calculate the average MSE for each episode with forcing 
+                #Calculate the average MSE for each episode with forcing (EpAveMSE) and w/o forcing (EpAveMSE_NF)
                 if episode_steps == 0:
                     print('Start of Episode ' + str(Episode+1))
                     EpAveMSE = (((abs(s[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
-                else:
-                    EpAveMSE = ((EpAveMSE*(episode_steps-1)) + (abs(s[0] - env.Ftarget[0])**2+abs(s[1] - env.Ftarget[1])**2+abs(s[2] - env.Ftarget[2])**2))/episode_steps
-
-
-                #Calculate the average MSE for each episode without forcing 
-                if episode_steps == 0:
                     EpAveMSE_NF = (((abs(s_noforcing[0] - env.Ftarget[0])+abs(s[1] - env.Ftarget[1])+abs(s[2] - env.Ftarget[2]))**2))
                 else:
-                    EpAveMSE_NF = ((EpAveMSE_NF*(episode_steps-1)) + (abs(s_noforcing[0] - env.Ftarget[0])**2+abs(s_noforcing[1] - env.Ftarget[1])**2+abs(s_noforcing[2] - env.Ftarget[2])**2))/episode_steps                
+                    EpAveMSE = ((EpAveMSE*(episode_steps-1)) + (abs(s[0] - env.Ftarget[0])**2+abs(s[1] - env.Ftarget[1])**2+abs(s[2] - env.Ftarget[2])**2))/episode_steps
+                    EpAveMSE_NF = ((EpAveMSE_NF*(episode_steps-1)) + (abs(s_noforcing[0] - env.Ftarget[0])**2+abs(s_noforcing[1] - env.Ftarget[1])**2+abs(s_noforcing[2] - env.Ftarget[2])**2))/episode_steps
 
                 #Executes after the final step in each episode    
                 if episode_steps == max_episode_steps-1:
@@ -121,7 +116,7 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
                         Control_Imp = os.path.dirname(os.path.abspath(__file__))
                         FluidML = os.path.abspath(os.path.join(Control_Imp, '..'))
                         best_params_dir = os.path.join(FluidML, agent.run_name)
-                        best_params_dir = os.path.join(best_params_dir, f'BestParams_Learning{total_learnings+1}')
+                        best_params_dir = os.path.join(best_params_dir, 'Best_Parameters', f'BestParams_Learning{total_learnings+1}')
 
                         if not os.path.exists(best_params_dir):
                             os.makedirs(best_params_dir)
@@ -158,7 +153,7 @@ def DDPGcontrol(env, Episodes, random_steps, max_episode_steps, update_freq, Lea
         Unforced_State_Data_Storage['Learning_' + str(total_learnings + 1)] = UFSD
         
         plot_storage = os.path.join(FluidML, agent.run_name)
-        plot_storage = os.path.join(plot_storage, f'Learning{total_learnings+1}_Plots')
+        plot_storage = os.path.join(plot_storage, 'Training_Plots', f'Learning{total_learnings+1}_Plots')
         os.makedirs(plot_storage)
 
         #Plot the forced state data
